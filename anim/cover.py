@@ -24,7 +24,7 @@ EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 PAGE = "file:///" + os.path.join(HERE, "cover.html").replace("\\", "/")
 PORT = 9334
 
-SIZES = [(2292, 1434), (1146, 717), (1920, 1080)]
+SIZES = [(2292, 1434), (1146, 717), (1920, 1080), (2400, 1800), (1200, 900)]
 
 
 def launch(user_dir, w, h):

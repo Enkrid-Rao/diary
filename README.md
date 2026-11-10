@@ -16,7 +16,7 @@ No account, no cloud, no telemetry. One `.md` file per day, on your own disk.
 </p>
 
 <p align="center">
-  <a href="docs/01-main-flat.png"><img src="docs/01-main-flat.png" width="900" alt="Diary — main window (dark)"></a>
+  <a href="docs/01-main-flat.webp"><img src="docs/01-main-flat.webp" width="900" alt="Diary — main window (dark)"></a>
 </p>
 
 <p align="center">
@@ -81,58 +81,58 @@ It is a single-file Python server plus a vanilla-JS front end. No build step, no
 <table>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/01-main-flat.png"><img src="docs/01-main-flat.png" alt="Editor and live preview — dark theme"></a><br>
+      <a href="docs/01-main-flat.webp"><img src="docs/01-main-flat.webp" alt="Editor and live preview — dark theme"></a><br>
       <sub><b>Dark · Ink</b> — editor and live preview</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/11-light-main.png"><img src="docs/11-light-main.png" alt="Editor and live preview — light theme"></a><br>
+      <a href="docs/11-light-main.webp"><img src="docs/11-light-main.webp" alt="Editor and live preview — light theme"></a><br>
       <sub><b>Light · Ink</b> — the same page on paper white</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/10-search.png"><img src="docs/10-search.png" alt="Full-text search — dark theme"></a><br>
+      <a href="docs/10-search.webp"><img src="docs/10-search.webp" alt="Full-text search — dark theme"></a><br>
       <sub><b>Full-text search</b> — date, heading, matched sentence</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/13-light-search.png"><img src="docs/13-light-search.png" alt="Full-text search — light theme"></a><br>
+      <a href="docs/13-light-search.webp"><img src="docs/13-light-search.webp" alt="Full-text search — light theme"></a><br>
       <sub><b>Full-text search</b> — the hit is a highlighter block</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/03-settings-appearance.png"><img src="docs/03-settings-appearance.png" alt="Appearance settings — dark theme"></a><br>
+      <a href="docs/03-settings-appearance.webp"><img src="docs/03-settings-appearance.webp" alt="Appearance settings — dark theme"></a><br>
       <sub><b>Settings · Appearance</b> — three papers × four accents</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/12-light-settings.png"><img src="docs/12-light-settings.png" alt="Appearance settings — light theme"></a><br>
+      <a href="docs/12-light-settings.webp"><img src="docs/12-light-settings.webp" alt="Appearance settings — light theme"></a><br>
       <sub><b>Settings · Appearance</b> — bar / page / card ladder</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/14-light-calendar.png"><img src="docs/14-light-calendar.png" alt="Calendar popover"></a><br>
+      <a href="docs/14-light-calendar.webp"><img src="docs/14-light-calendar.webp" alt="Calendar popover"></a><br>
       <sub><b>Calendar</b> — hand-drawn glass, dots mark days with entries</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/07-latex-hint.png"><img src="docs/07-latex-hint.png" alt="LaTeX autocomplete"></a><br>
+      <a href="docs/07-latex-hint.webp"><img src="docs/07-latex-hint.webp" alt="LaTeX autocomplete"></a><br>
       <sub><b>LaTeX autocomplete</b> — every row is a real KaTeX render</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/06-ocean-glass.png"><img src="docs/06-ocean-glass.png" alt="Ocean theme"></a><br>
+      <a href="docs/06-ocean-glass.webp"><img src="docs/06-ocean-glass.webp" alt="Ocean theme"></a><br>
       <sub><b>Ocean</b> — deep sea, the cool third paper</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/09-empty-state.png"><img src="docs/09-empty-state.png" alt="Empty state"></a><br>
+      <a href="docs/09-empty-state.webp"><img src="docs/09-empty-state.webp" alt="Empty state"></a><br>
       <sub><b>Empty state</b> — the page before you write anything</sub>
     </td>
   </tr>
 </table>
 
 <p align="center">
-  <a href="docs/15-settings-font.png"><img src="docs/15-settings-font.png" width="900" alt="Font settings"></a><br>
+  <a href="docs/15-settings-font.webp"><img src="docs/15-settings-font.webp" width="900" alt="Font settings"></a><br>
   <sub><b>Settings · Fonts</b> — interface and editor fonts are separate; type any font name installed on your machine</sub>
 </p>
 

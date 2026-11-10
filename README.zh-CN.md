@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/01-main-flat.png"><img src="docs/01-main-flat.png" width="900" alt="Diary —— 主窗口（深色）"></a>
+  <a href="docs/01-main-flat.webp"><img src="docs/01-main-flat.webp" width="900" alt="Diary —— 主窗口（深色）"></a>
 </p>
 
 <p align="center">
@@ -74,58 +74,58 @@
 <table>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/01-main-flat.png"><img src="docs/01-main-flat.png" alt="编辑器与实时预览 —— 深色"></a><br>
+      <a href="docs/01-main-flat.webp"><img src="docs/01-main-flat.webp" alt="编辑器与实时预览 —— 深色"></a><br>
       <sub><b>深色 · 墨夜</b> —— 编辑器与实时预览</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/11-light-main.png"><img src="docs/11-light-main.png" alt="编辑器与实时预览 —— 浅色"></a><br>
+      <a href="docs/11-light-main.webp"><img src="docs/11-light-main.webp" alt="编辑器与实时预览 —— 浅色"></a><br>
       <sub><b>浅色 · 墨夜</b> —— 同一页的纸白版本</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/10-search.png"><img src="docs/10-search.png" alt="全文搜索 —— 深色"></a><br>
+      <a href="docs/10-search.webp"><img src="docs/10-search.webp" alt="全文搜索 —— 深色"></a><br>
       <sub><b>全文搜索</b> —— 日期、小标题、命中的那句话</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/13-light-search.png"><img src="docs/13-light-search.png" alt="全文搜索 —— 浅色"></a><br>
+      <a href="docs/13-light-search.webp"><img src="docs/13-light-search.webp" alt="全文搜索 —— 浅色"></a><br>
       <sub><b>全文搜索</b> —— 命中词是荧光笔块</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/03-settings-appearance.png"><img src="docs/03-settings-appearance.png" alt="外观设置 —— 深色"></a><br>
+      <a href="docs/03-settings-appearance.webp"><img src="docs/03-settings-appearance.webp" alt="外观设置 —— 深色"></a><br>
       <sub><b>设置 · 外观</b> —— 三张纸 × 四支强调色</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/12-light-settings.png"><img src="docs/12-light-settings.png" alt="外观设置 —— 浅色"></a><br>
+      <a href="docs/12-light-settings.webp"><img src="docs/12-light-settings.webp" alt="外观设置 —— 浅色"></a><br>
       <sub><b>设置 · 外观</b> —— 栏 / 页 / 卡片三级阶梯</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/14-light-calendar.png"><img src="docs/14-light-calendar.png" alt="日历弹层"></a><br>
+      <a href="docs/14-light-calendar.webp"><img src="docs/14-light-calendar.webp" alt="日历弹层"></a><br>
       <sub><b>日历</b> —— 自绘玻璃，有记录的日期带点</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/07-latex-hint.png"><img src="docs/07-latex-hint.png" alt="LaTeX 补全"></a><br>
+      <a href="docs/07-latex-hint.webp"><img src="docs/07-latex-hint.webp" alt="LaTeX 补全"></a><br>
       <sub><b>LaTeX 补全</b> —— 每一行左边都是真实的 KaTeX 渲染</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <a href="docs/06-ocean-glass.png"><img src="docs/06-ocean-glass.png" alt="深海主题"></a><br>
+      <a href="docs/06-ocean-glass.webp"><img src="docs/06-ocean-glass.webp" alt="深海主题"></a><br>
       <sub><b>深海</b> —— 偏冷的第三张纸</sub>
     </td>
     <td width="50%" align="center">
-      <a href="docs/09-empty-state.png"><img src="docs/09-empty-state.png" alt="空状态"></a><br>
+      <a href="docs/09-empty-state.webp"><img src="docs/09-empty-state.webp" alt="空状态"></a><br>
       <sub><b>空状态</b> —— 还没写东西时的那一页</sub>
     </td>
   </tr>
 </table>
 
 <p align="center">
-  <a href="docs/15-settings-font.png"><img src="docs/15-settings-font.png" width="900" alt="字体设置"></a><br>
+  <a href="docs/15-settings-font.webp"><img src="docs/15-settings-font.webp" width="900" alt="字体设置"></a><br>
   <sub><b>设置 · 字体</b> —— 界面字体与编辑器字体分开设置，也可以填本机任意已安装的字体名</sub>
 </p>
 

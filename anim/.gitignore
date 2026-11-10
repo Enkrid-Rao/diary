@@ -1,0 +1,7 @@
+# 渲染中间产物
+frames/
+.edge-profile/
+
+# 试片段
+test-*.mp4
+preview-*.mp4

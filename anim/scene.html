@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Diary — 宣传动画源</title>
+<link rel="stylesheet" href="../static/vendor/katex/katex.min.css">
+<style>
+  /* ===== 时间轴动画源：所有状态都由 seek(t) 计算，没有 CSS keyframes，
+         这样才能被逐帧截图精确复现（同一 t 永远得到同一帧）。 ===== */
+  :root {
+    --ink: #07080c;
+    --text: #e4e6ec;
+    --muted: #9ba1b6;
+    --faint: #737a95;
+    --accent: #f0b46a;
+    --accent-deep: #d9984a;
+    --accent-rgb: 240, 180, 106;
+    --cyan: #8fd4e0;
+    --violet: #b79ae0;
+    --glass: linear-gradient(155deg, rgba(255,255,255,.085), rgba(255,255,255,.032) 55%, rgba(255,255,255,.06));
+    --line: rgba(255,255,255,.1);
+    --font-ui: "JetBrains Mono", "Noto Sans SC", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+    --font-mono: "JetBrainsLxgwNerdMono", "JetBrains Mono", "Noto Sans SC", monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 1920px; height: 1080px;
+    background: var(--ink);
+    overflow: hidden;
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+
+  /* ---------- 背景：极光 + 暗角 + 颗粒 ---------- */
+  .aurora { position: absolute; inset: -20%; pointer-events: none; }
+  .aurora i {
+    position: absolute; display: block; border-radius: 50%;
+    filter: blur(120px); will-change: transform;
+  }
+  .b1 { width: 1200px; height: 1000px; left: 2%; top: 2%;
+        background: radial-gradient(circle, rgba(var(--accent-rgb), .27), transparent 66%); }
+  .b2 { width: 1050px; height: 950px; right: 4%; top: -6%;
+        background: radial-gradient(circle, rgba(143, 212, 224, .18), transparent 68%); }
+  .b3 { width: 1300px; height: 1100px; left: 22%; bottom: -22%;
+        background: radial-gradient(circle, rgba(183, 154, 224, .17), transparent 70%); }
+
+  .vignette {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(120% 90% at 50% 42%, transparent 46%, rgba(0,0,0,.46) 100%),
+      linear-gradient(180deg, rgba(0,0,0,.28), transparent 20%, transparent 76%, rgba(0,0,0,.44));
+  }
+
+  /* ---------- 世界层：整体镜头（推近 / 位移） ---------- */
+  .world { position: absolute; inset: 0; transform-origin: 50% 46%; }
+
+  /* ---------- 开场标题 ---------- */
+  .hero {
+    position: absolute; left: 0; right: 0; top: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 1080px; pointer-events: none;
+  }
+  .hero h1 {
+    font-size: 118px; font-weight: 600; letter-spacing: 22px;
+    color: #f6f2ea; text-indent: 22px;
+    text-shadow: 0 0 60px rgba(var(--accent-rgb), .28);
+  }
+  .hero .sub {
+    margin-top: 26px; font-size: 25px; letter-spacing: 7px;
+    color: rgba(228, 230, 236, .74); text-indent: 7px;
+  }
+  .hero .rule {
+    margin-top: 34px; width: 84px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), .85), transparent);
+  }
+
+  /* ---------- 应用窗口 ---------- */
+  .window {
+    position: absolute; left: 80px; top: 100px;
+    width: 1760px; height: 760px;
+    display: flex; flex-direction: column;
+    border-radius: 20px;
+    background: var(--glass);
+    border: 1px solid var(--line);
+    box-shadow:
+      0 40px 120px rgba(0, 0, 0, .62),
+      0 2px 0 rgba(0, 0, 0, .3),
+      inset 0 1px 0 rgba(255, 255, 255, .09);
+    backdrop-filter: blur(30px) saturate(1.35);
+    -webkit-backdrop-filter: blur(30px) saturate(1.35);
+    overflow: hidden;
+    transform-origin: 50% 42%;
+  }
+  /* 高光扫过：一道斜向光带从左到右掠过玻璃 */
+  .window .sheen {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(104deg,
+      transparent 34%,
+      rgba(255,255,255,.075) 46%,
+      rgba(255,255,255,.02) 52%,
+      transparent 62%);
+    mix-blend-mode: screen;
+  }
+
+  /* 顶栏：日期 / 回到今天 / 字数，让窗口读起来像一个真实的窗口 */
+  .topbar {
+    flex: none; height: 62px;
+    display: flex; align-items: center; gap: 22px;
+    padding: 0 22px;
+    border-bottom: 1px solid rgba(255,255,255,.055);
+    background: linear-gradient(180deg, rgba(255,255,255,.026), rgba(255,255,255,.006));
+  }
+  .tb-date { display: flex; flex-direction: column; gap: 3px; min-width: 190px; }
+  .tb-date b { font-size: 17px; font-weight: 600; letter-spacing: 1.5px; color: #eef0f5; }
+  .tb-date span { font-size: 10.5px; letter-spacing: 1.2px; color: var(--faint); }
+  .tb-today {
+    font-size: 12px; letter-spacing: 1px; color: #f0d9b6;
+    border: 1px solid rgba(var(--accent-rgb), .38);
+    background: rgba(var(--accent-rgb), .1);
+    border-radius: 999px; padding: 5px 15px;
+  }
+  .tb-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .tb-count { font-size: 12px; letter-spacing: .5px; color: var(--muted); }
+  .tb-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(126, 214, 165, .8); box-shadow: 0 0 8px rgba(126,214,165,.6); }
+  .tb-txt { font-size: 11px; letter-spacing: .5px; color: var(--faint); }
+  .body { flex: 1; display: flex; min-height: 0; }
+
+  /* 侧栏 */
+  .side {
+    width: 262px; flex: none;
+    border-right: 1px solid rgba(255,255,255,.055);
+    background: linear-gradient(180deg, rgba(255,255,255,.032), rgba(255,255,255,.012));
+    padding: 20px 0 0;
+    display: flex; flex-direction: column;
+  }
+  .side-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 20px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+  .logo-mark {
+    width: 34px; height: 34px; flex: none; border-radius: 10px;
+    border: 1px solid rgba(var(--accent-rgb), .55);
+    box-shadow: 0 0 18px rgba(var(--accent-rgb), .16), inset 0 1px 0 rgba(255,255,255,.12);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-mark i { display: block; width: 12px; height: 1.5px; background: rgba(var(--accent-rgb), .95); box-shadow: 0 4px 0 rgba(var(--accent-rgb), .7), 0 8px 0 rgba(var(--accent-rgb), .42); border-radius: 2px; }
+  .side-title { font-size: 15px; letter-spacing: 3px; color: #e9e5dd; }
+
+  .side-list { padding: 6px 10px; flex: 1; }
+
+  .mg {
+    display: flex; align-items: center; gap: 7px;
+    padding: 14px 8px 9px 2px;
+  }
+  .mg .chev {
+    width: 13px; height: 13px; flex: none;
+    color: var(--faint);
+  }
+  .mg .label { font-size: 12px; letter-spacing: 1.8px; color: var(--muted); font-weight: 600; }
+  .mg .count {
+    margin-left: auto; font-size: 10px; letter-spacing: .5px; color: var(--faint);
+    border: 1px solid rgba(255,255,255,.07); border-radius: 999px; padding: 1px 7px;
+  }
+
+  .entry {
+    display: block; padding: 9px 10px; border-radius: 12px;
+    position: relative;
+  }
+  .entry .row1 { display: flex; align-items: baseline; gap: 8px; }
+  .entry .day { font-size: 14.5px; color: var(--text); font-weight: 600; }
+  .entry .dow { font-size: 10px; color: var(--faint); letter-spacing: .5px; }
+  .entry .ex {
+    margin-top: 3px; font-size: 12px; line-height: 1.5; color: #8b91a6;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .entry.on {
+    background: rgba(var(--accent-rgb), .1);
+    box-shadow: inset 2px 0 0 rgba(var(--accent-rgb), .9), inset 0 0 0 1px rgba(var(--accent-rgb), .16);
+  }
+  .entry.on .day { color: #f7e4c6; }
+  .entry.on .ex { color: rgba(228, 230, 236, .62); }
+
+  /* 编辑器 */
+  .editor {
+    width: 762px; flex: none;
+    padding: 30px 36px 0;
+    position: relative;
+  }
+  .ed-lines { font-family: var(--font-mono); font-size: 15.5px; line-height: 1.95; color: #cbd0dc; }
+  .ed-lines .ln { white-space: pre-wrap; word-break: break-word; }
+  .tok-h { color: var(--accent); font-weight: 600; }
+  .tok-math { color: #b9a6de; }
+  .tok-code { color: #8fd4e0; }
+  .tok-mute { color: #6b7288; }
+  .caret {
+    display: inline-block; width: 2px; height: 18px; vertical-align: -3px;
+    background: var(--accent); margin-left: 1px;
+  }
+
+  /* 预览 */
+  .preview {
+    flex: 1; padding: 30px 40px 0;
+    border-left: 1px solid rgba(255,255,255,.065);
+    background: linear-gradient(180deg, rgba(255,255,255,.02), transparent 45%);
+  }
+  .pv h1 {
+    font-size: 25px; font-weight: 600; letter-spacing: 1px; color: #f4f0e8;
+    margin-bottom: 20px;
+  }
+  .pv p { font-size: 15.5px; line-height: 1.95; color: #c2c7d4; margin-bottom: 16px; }
+  .pv .code {
+    font-family: var(--font-mono); font-size: 13.5px; line-height: 1.85;
+    color: #cfd4e0; background: rgba(255,255,255,.045);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;
+  }
+  .pv .code .k { color: #d78ad0; }
+  .pv .code .f { color: #8fd4e0; }
+  .pv .formula {
+    margin: 6px 0 20px; padding: 18px 0 14px;
+    border-top: 1px solid rgba(255,255,255,.055);
+    border-bottom: 1px solid rgba(255,255,255,.055);
+    text-align: center; position: relative;
+  }
+  .pv .formula .katex { color: #eceef4; font-size: 1.42em; }
+  .pv .formula .sweep {
+    position: absolute; left: 50%; bottom: 8px; height: 1px; width: 0;
+    background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), .95), transparent);
+    transform: translateX(-50%);
+  }
+  .pv .tip {
+    font-size: 13px; line-height: 1.9; color: #a8aec2; letter-spacing: .3px;
+    border-left: 2px solid rgba(var(--accent-rgb), .6);
+    background: linear-gradient(90deg, rgba(var(--accent-rgb), .07), transparent 70%);
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px 10px 14px;
+  }
+
+  /* ---------- 字幕 ---------- */
+  .caption {
+    position: absolute; left: 0; right: 0; top: 996px; height: 60px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .caption span {
+    position: absolute;
+    font-size: 29px; letter-spacing: 7px; color: rgba(232, 234, 240, .95);
+    text-indent: 6px; white-space: nowrap;
+    text-shadow: 0 2px 24px rgba(0,0,0,.6);
+  }
+  .caption span em { font-style: normal; color: var(--accent); }
+
+  /* ---------- 收尾 ---------- */
+  .outro {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  /* 收尾时在标题后面点一盏灯，别让画面掉进纯黑 */
+  .outro::before {
+    content: "";
+    position: absolute; left: 50%; top: 47%;
+    width: 900px; height: 620px; transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(var(--accent-rgb), .16), rgba(183, 154, 224, .07) 55%, transparent 78%);
+    filter: blur(20px);
+    pointer-events: none;
+  }
+  .outro > * { position: relative; z-index: 1; }
+  /* 收尾时在标题后面点一盏灯，别让画面掉进纯黑 */
+  .outro::before {
+    content: "";
+    position: absolute; left: 50%; top: 47%;
+    width: 900px; height: 620px; transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(var(--accent-rgb), .16), rgba(183, 154, 224, .07) 55%, transparent 78%);
+    filter: blur(20px);
+    pointer-events: none;
+  }
+  .outro > * { position: relative; z-index: 1; }
+  .outro .mark {
+    width: 62px; height: 62px; border-radius: 16px;
+    border: 1px solid rgba(var(--accent-rgb), .6);
+    box-shadow: 0 0 46px rgba(var(--accent-rgb), .22), inset 0 1px 0 rgba(255,255,255,.14);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 34px;
+  }
+  .outro .mark i { display: block; width: 22px; height: 2px; background: rgba(var(--accent-rgb), .95); box-shadow: 0 7px 0 rgba(var(--accent-rgb), .72), 0 14px 0 rgba(var(--accent-rgb), .44); border-radius: 2px; }
+  .outro h2 {
+    font-size: 72px; font-weight: 600; letter-spacing: 15px; text-indent: 15px;
+    color: #f6f2ea; text-shadow: 0 0 60px rgba(var(--accent-rgb), .3);
+  }
+  .outro .slogan {
+    margin-top: 20px; font-size: 21px; letter-spacing: 4px;
+    color: rgba(228, 230, 236, .8);
+  }
+  .outro .link {
+    margin-top: 34px; font-size: 14.5px; letter-spacing: 2px; color: #8a90a4;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="aurora"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
+
+  <div class="world">
+    <div class="window">
+      <div class="sheen"></div>
+
+      <header class="topbar">
+        <div class="tb-date"><b>11 月 10 日</b><span>2026 · 周二 · 今天</span></div>
+        <div class="tb-today">回到今天</div>
+        <div class="tb-right"><span class="tb-count">292 字</span><i class="tb-dot"></i></div>
+      </header>
+
+      <div class="body">
+      <aside class="side">
+        <div class="side-head">
+          <div class="logo-mark"><i></i></div>
+          <div class="side-title">日记</div>
+        </div>
+        <div class="side-list">
+          <div class="mg"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span class="label">2026年11月 · 本月</span><span class="count">3 篇</span></div>
+          <div class="entry on"><div class="row1"><span class="day">10日</span><span class="dow">周二</span></div><div class="ex">十一月的第一场雨 雨从下午三点…</div></div>
+          <div class="entry"><div class="row1"><span class="day">9日</span><span class="dow">周一</span></div><div class="ex">煮咖啡 豆子是新买的那包…</div></div>
+          <div class="entry"><div class="row1"><span class="day">8日</span><span class="dow">周日</span></div><div class="ex">换成了茶 红茶第二泡刚好…</div></div>
+          <div class="mg"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span class="label">2026年10月</span><span class="count">2 篇</span></div>
+          <div class="entry"><div class="row1"><span class="day">21日</span><span class="dow">周三</span></div><div class="ex">十月中 读了一本书…</div></div>
+          <div class="entry"><div class="row1"><span class="day">3日</span><span class="dow">周六</span></div><div class="ex">假期 出门走了走…</div></div>
+          <div class="mg"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span class="label">2026年9月</span><span class="count">2 篇</span></div>
+          <div class="entry"><div class="row1"><span class="day">30日</span><span class="dow">周三</span></div><div class="ex">九月底 月底总结…</div></div>
+        </div>
+      </aside>
+
+      <main class="editor">
+        <div class="ed-lines" id="ed"></div>
+      </main>
+
+      <section class="preview">
+        <div class="pv" id="pv">
+          <h1 id="pvH">十一月的第一场雨</h1>
+          <p id="pvP1"></p>
+          <p id="pvP2"></p>
+          <div class="formula" id="pvF"><div class="sweep" id="pvSweep"></div><span id="pvMath"></span></div>
+          <div class="tip" id="pvTip"></div>
+        </div>
+      </section>
+      </div>
+    </div>
+
+    <div class="caption">
+      <span id="cap1">一天一页 Markdown</span>
+      <span id="cap2">LaTeX <em>边打边渲染</em></span>
+      <span id="cap3">全文搜索 <em>Ctrl+F</em></span>
+    </div>
+
+    <div class="hero">
+      <h1 id="heroTitle">Diary</h1>
+      <div class="sub" id="heroSub">本地优先的 Markdown 日记</div>
+      <div class="rule" id="heroRule"></div>
+    </div>
+
+    <div class="outro">
+      <div class="mark" id="outroMark"><i></i></div>
+      <h2 id="outroTitle">Diary</h2>
+      <div class="slogan" id="outroSlogan">每天写一点，公式也在里面</div>
+      <div class="link" id="outroLink">github.com/Enkrid-Rao/diary</div>
+    </div>
+  </div>
+
+  <div class="vignette"></div>
+</div>
+
+<script src="../static/vendor/katex/katex.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- 缓动 ---------- */
+  const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+  const easeIn = (x) => x * x * x;
+  const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const easeOutQuint = (x) => 1 - Math.pow(1 - x, 5);
+  /** 把绝对时间 t 映射到 [a,b] 区间的 0→1 进度，再套缓动 */
+  const at = (t, a, b, ease) => (ease || easeOut)(clamp01((t - a) / (b - a)));
+
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    b1: document.querySelector(".b1"), b2: document.querySelector(".b2"), b3: document.querySelector(".b3"),
+    world: document.querySelector(".world"),
+    win: document.querySelector(".window"),
+    sheen: document.querySelector(".sheen"),
+    ed: $("ed"),
+    pvH: $("pvH"), pvP1: $("pvP1"), pvP2: $("pvP2"),
+    pvF: $("pvF"), pvSweep: $("pvSweep"), pvMath: $("pvMath"), pvTip: $("pvTip"),
+    hero: document.querySelector(".hero"),
+    heroTitle: $("heroTitle"), heroSub: $("heroSub"), heroRule: $("heroRule"),
+    cap1: $("cap1"), cap2: $("cap2"), cap3: $("cap3"),
+    outro: document.querySelector(".outro"), outroMark: $("outroMark"),
+    outroTitle: $("outroTitle"), outroSlogan: $("outroSlogan"), outroLink: $("outroLink"),
+    entries: Array.prototype.slice.call(document.querySelectorAll(".entry")),
+    groups: Array.prototype.slice.call(document.querySelectorAll(".mg")),
+  };
+
+  /* ---------- 编辑器内容（逐字打出） ---------- */
+  const SRC = [
+    { text: "# 十一月的第一场雨", cls: "tok-h" },
+    { text: "" },
+    { text: "雨从下午三点开始下，一直没停。" },
+    { text: "" },
+    { text: "顺手记一个误差估计：" },
+    { text: "$$" , cls: "tok-math" },
+    { text: "\\varepsilon_n \\le \\frac{Lh}{2}\\left(1+\\frac{h}{2}\\right)", cls: "tok-math" },
+    { text: "$$", cls: "tok-math" },
+    { text: "" },
+    { text: "步长减半，误差也减半。" },
+  ];
+  const FULL = SRC.map((l) => l.text).join("\n");
+  // 每行结束时的全局字符下标，用来驱动预览的逐块出现
+  const lineEnd = [];
+  (function () {
+    let acc = 0;
+    SRC.forEach((l, i) => { acc += l.text.length + (i < SRC.length - 1 ? 1 : 0); lineEnd.push(acc); });
+  })();
+
+  function renderEditor(chars) {
+    let left = chars, html = "";
+    for (let i = 0; i < SRC.length; i++) {
+      const line = SRC[i];
+      if (left <= 0) break;
+      const cut = line.text.slice(0, Math.min(left, line.text.length));
+      left -= line.text.length + 1;
+      const cls = line.cls ? ' class="' + line.cls + '"' : "";
+      const body = cut.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      html += '<div class="ln"><span' + cls + ">" + (body || " ") + "</span></div>";
+    }
+    // 光标跟在最后一个字符后
+    html = html.replace(/<\/span><\/div>$/, '<span class="caret" id="caret"></span></span></div>');
+    el.ed.innerHTML = html || '<div class="ln"><span class="caret" id="caret"></span></div>';
+  }
+
+  /* ---------- 公式 ---------- */
+  const TEX = "\\varepsilon_n \\le \\frac{Lh}{2}\\left(1+\\frac{h}{2}\\right)";
+  if (window.katex) {
+    try { katex.render(TEX, el.pvMath, { displayMode: true, throwOnError: false }); } catch (e) {}
+  }
+
+  /* ---------- 关键时间点 ---------- */
+  const T = {
+    heroIn: 0.1, heroSub: 0.72, heroRule: 1.0,
+    heroOut: 1.6,
+    winIn: 1.85, winInEnd: 2.95,
+    sheen: 2.6, sheenEnd: 3.9,
+    sideStart: 2.95, sideStep: 0.13,
+    typeStart: 3.3, typeEnd: 7.1,
+    mathIn: 7.35, mathEnd: 8.5, sweep: 8.35, sweepEnd: 9.3,
+    cap1: 8.9, cap2: 10.7, cap3: 12.4, capEnd: 14.1,
+    pushIn: 11.6, pushEnd: 14.6,
+    winOut: 14.15, winOutEnd: 15.05,
+    outroIn: 14.7, outroEnd: 16.4,
+  };
+
+  const DURATION = 17.0;
+
+  /* ---------- 主时间轴 ---------- */
+  function seek(t) {
+    /* 极光：缓慢漂移，周期 26s，确定性 */
+    const w = (t / 26) * Math.PI * 2;
+    el.b1.style.transform = "translate(" + (Math.sin(w) * 46).toFixed(2) + "px," + (Math.cos(w * 0.8) * 38).toFixed(2) + "px) scale(" + (1 + Math.sin(w * 0.6) * 0.05).toFixed(4) + ")";
+    el.b2.style.transform = "translate(" + (Math.cos(w * 0.9) * 52).toFixed(2) + "px," + (Math.sin(w * 1.1) * 30).toFixed(2) + "px) scale(" + (1 + Math.cos(w * 0.7) * 0.06).toFixed(4) + ")";
+    el.b3.style.transform = "translate(" + (Math.sin(w * 1.2 + 1.1) * 44).toFixed(2) + "px," + (Math.cos(w * 0.7 + 0.6) * 34).toFixed(2) + "px) scale(" + (1 + Math.sin(w * 0.9) * 0.05).toFixed(4) + ")";
+
+    /* 世界层：中段轻微推近，收尾再推一点 */
+    const push = at(t, T.pushIn, T.pushEnd, easeInOut);
+    const outroPull = at(t, T.outroIn, T.outroEnd, easeInOut);
+    const worldScale = 1 + push * 0.05 + outroPull * 0.02;
+    const worldY = push * -8 + outroPull * 6;
+    el.world.style.transform = "scale(" + worldScale.toFixed(4) + ") translateY(" + worldY.toFixed(2) + "px)";
+
+    /* 开场标题 */
+    const hIn = at(t, T.heroIn, T.heroIn + 1.15, easeOutQuint);
+    const hOut = at(t, T.heroOut, T.heroOut + 1.0, easeIn);
+    el.heroTitle.style.opacity = (hIn * (1 - hOut)).toFixed(3);
+    el.heroTitle.style.transform = "translateY(" + (lerp(34, 0, hIn) - hOut * 26).toFixed(2) + "px)";
+    el.heroTitle.style.letterSpacing = lerp(52, 22, hIn).toFixed(2) + "px";
+    el.heroTitle.style.textIndent = lerp(52, 22, hIn).toFixed(2) + "px";
+
+    const sIn = at(t, T.heroSub, T.heroSub + 1.0, easeOut);
+    el.heroSub.style.opacity = (sIn * (1 - hOut)).toFixed(3);
+    el.heroSub.style.transform = "translateY(" + (lerp(16, 0, sIn)).toFixed(2) + "px)";
+
+    const rIn = at(t, T.heroRule, T.heroRule + 0.9, easeOut);
+    el.heroRule.style.opacity = (rIn * (1 - hOut)).toFixed(3);
+    el.heroRule.style.width = (84 * rIn).toFixed(1) + "px";
+
+    /* 窗口浮现 */
+    const wIn = at(t, T.winIn, T.winInEnd, easeOutQuint);
+    const wOut = at(t, T.winOut, T.winOutEnd, easeInOut);
+    el.win.style.opacity = (wIn * (1 - wOut)).toFixed(3);
+    el.win.style.transform =
+      "translateY(" + lerp(46, 0, wIn).toFixed(2) + "px) scale(" +
+      (lerp(0.935, 1, wIn) * lerp(1, 1.022, wOut)).toFixed(4) + ")";
+    el.win.style.filter = "blur(" + (lerp(9, 0, wIn) + wOut * 16).toFixed(2) + "px)";
+
+    /* 高光扫过 */
+    const sh = at(t, T.sheen, T.sheenEnd, easeInOut);
+    el.sheen.style.opacity = (sh > 0 && sh < 1 ? 1 : 0).toFixed(2);
+    el.sheen.style.transform = "translateX(" + lerp(-70, 70, sh).toFixed(2) + "%)";
+
+    /* 侧栏：组头 + 条目逐条滑入 */
+    let k = 0;
+    el.groups.forEach((g) => {
+      const p = at(t, T.sideStart + k * T.sideStep, T.sideStart + k * T.sideStep + 0.62, easeOut);
+      g.style.opacity = p.toFixed(3);
+      g.style.transform = "translateX(" + lerp(-16, 0, p).toFixed(2) + "px)";
+      k++;
+    });
+    el.entries.forEach((e) => {
+      const p = at(t, T.sideStart + k * T.sideStep, T.sideStart + k * T.sideStep + 0.62, easeOut);
+      e.style.opacity = p.toFixed(3);
+      e.style.transform = "translateX(" + lerp(-16, 0, p).toFixed(2) + "px)";
+      k++;
+    });
+
+    /* 打字机 */
+    const typeP = at(t, T.typeStart, T.typeEnd, (x) => x); // 线性，节奏稳定
+    const chars = Math.floor(typeP * FULL.length);
+    renderEditor(chars);
+    const caret = document.getElementById("caret");
+    if (caret) {
+      const blink = (t * 1.9) % 1 < 0.55 ? 1 : 0;
+      caret.style.opacity = typeP >= 1 ? (blink ? 0.9 : 0.1).toFixed(2) : "1";
+    }
+
+    /* 预览：按行完成逐块出现 */
+    const done = (idx) => (chars >= lineEnd[idx] ? 1 : 0);
+    const fadeP = (idx, delay) => {
+      if (!done(idx)) return 0;
+      return 1; // 块一旦出现就保留，用淡入瞬时过渡由 CSS 之外的方式处理
+    };
+    // 标题：第 0 行打完就出现
+    const t0 = chars >= lineEnd[0] ? 1 : 0;
+    el.pvH.style.opacity = t0;
+    el.pvH.style.transform = "translateY(" + lerp(10, 0, t0) + "px)";
+    const t2 = chars >= lineEnd[2] ? 1 : 0;
+    el.pvP1.textContent = t2 ? "雨从下午三点开始下，一直没停。" : "";
+    el.pvP1.style.opacity = t2;
+    const t4 = chars >= lineEnd[4] ? 1 : 0;
+    el.pvP2.textContent = t4 ? "顺手记一个误差估计：" : "";
+    el.pvP2.style.opacity = t4;
+
+    /* 公式：整体淡入 + 缩放，再扫一道琥珀线 */
+    const mIn = at(t, T.mathIn, T.mathEnd, easeOutQuint);
+    el.pvF.style.opacity = mIn.toFixed(3);
+    el.pvMath.style.display = "inline-block";
+    el.pvMath.style.transform = "scale(" + lerp(0.92, 1, mIn).toFixed(4) + ")";
+    el.pvMath.style.filter = "blur(" + lerp(5, 0, mIn).toFixed(2) + "px)";
+
+    const sw = at(t, T.sweep, T.sweepEnd, easeInOut);
+    el.pvSweep.style.width = (sw * 78).toFixed(1) + "%";
+    el.pvSweep.style.opacity = (sw > 0 && sw < 1 ? 1 : sw >= 1 ? 0 : 0).toFixed(2);
+
+    const t6 = chars >= lineEnd[SRC.length - 1] ? 1 : 0;
+    el.pvTip.textContent = t6 ? "步长减半，误差也减半。" : "";
+    el.pvTip.style.opacity = t6;
+    el.pvTip.style.transform = "translateY(" + lerp(8, 0, t6) + "px)";
+
+    /* 字幕：三条依次交叉淡入淡出 */
+    const capP = (a, b) => {
+      const inP = at(t, a, a + 0.55, easeOut);
+      const outP = at(t, b - 0.45, b, easeIn);
+      return clamp01(inP - outP);
+    };
+    const c1 = capP(T.cap1, T.cap2);
+    const c2 = capP(T.cap2, T.cap3);
+    const c3 = capP(T.cap3, T.capEnd);
+    el.cap1.style.opacity = c1.toFixed(3);
+    el.cap1.style.transform = "translateY(" + lerp(14, 0, c1).toFixed(2) + "px)";
+    el.cap2.style.opacity = c2.toFixed(3);
+    el.cap2.style.transform = "translateY(" + lerp(14, 0, c2).toFixed(2) + "px)";
+    el.cap3.style.opacity = c3.toFixed(3);
+    el.cap3.style.transform = "translateY(" + lerp(14, 0, c3).toFixed(2) + "px)";
+
+    /* 收尾 */
+    const oIn = at(t, T.outroIn + 0.25, T.outroIn + 1.35, easeOutQuint);
+    el.outro.style.opacity = oIn.toFixed(3);
+    el.outro.style.pointerEvents = oIn > 0 ? "auto" : "none";
+    el.outroMark.style.transform = "scale(" + lerp(0.86, 1, oIn).toFixed(4) + ")";
+    el.outroMark.style.opacity = oIn.toFixed(3);
+    el.outroTitle.style.opacity = at(t, T.outroIn + 0.45, T.outroIn + 1.5, easeOut).toFixed(3);
+    el.outroTitle.style.transform = "translateY(" + lerp(18, 0, at(t, T.outroIn + 0.45, T.outroIn + 1.5, easeOut)).toFixed(2) + "px)";
+    el.outroSlogan.style.opacity = at(t, T.outroIn + 0.75, T.outroIn + 1.8, easeOut).toFixed(3);
+    el.outroLink.style.opacity = (at(t, T.outroIn + 1.0, T.outroIn + 2.0, easeOut) * 0.9).toFixed(3);
+  }
+
+  window.seek = seek;
+  window.DURATION = DURATION;
+  window.__ready = false;
+
+  /* 首帧之前先排版好，等字体就绪再放行渲染脚本 */
+  seek(0);
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
+    seek(0);
+    window.__ready = true;
+  });
+})();
+</script>
+</body>
+</html>

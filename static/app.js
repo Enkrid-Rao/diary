@@ -39,7 +39,14 @@
     };
   }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
-  const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+  /* rAF 在窗口被遮挡/最小化时会暂停，等它可能永远等不到。
+     这里加一次 60ms 兜底：正常有帧时走 rAF，无帧时也能按时继续。 */
+  const nextFrame = () => new Promise((r) => {
+    let done = false;
+    const go = () => { if (!done) { done = true; r(); } };
+    requestAnimationFrame(go);
+    setTimeout(go, 60);
+  });
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // ---------- 设置：启动即读（后端注入，无需等待网络） ----------
@@ -609,6 +616,7 @@
     else delete document.body.dataset.overlay;
     $("#calBtn").classList.toggle("is-open", name === "calendar");
     $("#settingsBtn").classList.toggle("is-open", name === "settings");
+    $("#searchBtn").classList.toggle("is-open", name === "search");
   }
   function overlayOpen() { return state.overlay !== null; }
 
@@ -715,7 +723,159 @@
     closeCalendar();
   });
 
-  // ---------- 侧栏折叠 ----------
+  // ---------- 全文搜索 ----------
+  /* 结果列表只做展示，真正的定位交给 openResult：
+     换日期 → 选中命中句 → 编辑区滚到中部（同步开着时预览会自己跟过去）。 */
+  const searchOverlay = $("#searchOverlay");
+  const searchInput = $("#searchInput");
+  const searchResults = $("#searchResults");
+  const searchCount = $("#searchCount");
+  let searchList = [];
+  let searchSel = -1;
+  let searchTimer = 0;
+  let searchSeq = 0;
+
+  function shortDate(date) {
+    const d = parseDate(date);
+    return (d.getMonth() + 1) + "月" + d.getDate() + "日 周" + DOW[d.getDay()];
+  }
+
+  const SEARCH_HINT = '<div class="sr-hint">输入关键词，搜索全部日记的正文</div>';
+
+  function openSearch() {
+    if (state.overlay === "search") { searchInput.focus(); searchInput.select(); return; }
+    setOverlay("search");
+    searchInput.value = "";
+    searchList = [];
+    searchSel = -1;
+    searchResults.innerHTML = SEARCH_HINT;
+    searchCount.textContent = "";
+    focusSearch();
+  }
+
+  /* 面板是靠 body[data-overlay] 切换 visibility 的，属性写入后同步 focus 即可；
+     少数环境（样式还没 flush 完）会静默失败，下一轮事件循环再兜一次。 */
+  function focusSearch() {
+    searchInput.focus({ preventScroll: true });
+    if (document.activeElement === searchInput) return;
+    setTimeout(() => {
+      if (state.overlay === "search") searchInput.focus({ preventScroll: true });
+    }, 0);
+  }
+
+  function closeSearch() {
+    if (state.overlay !== "search") return;
+    setOverlay(null);
+    searchList = [];
+    searchSel = -1;
+    searchResults.innerHTML = "";
+    searchCount.textContent = "";
+    cm.focus();
+  }
+
+  function selResult(i) {
+    const items = searchResults.querySelectorAll(".sr-item");
+    if (!items.length) return;
+    searchSel = (i + items.length) % items.length;
+    items.forEach((el, k) => el.classList.toggle("is-sel", k === searchSel));
+    items[searchSel].scrollIntoView({ block: "nearest" });
+  }
+
+  function renderResults(list, q) {
+    searchList = list;
+    searchSel = -1;
+    if (!list.length) {
+      searchResults.innerHTML = '<div class="sr-hint">没有找到「' + esc(q) + '」</div>';
+      return;
+    }
+    searchResults.innerHTML = list.map((r, i) => {
+      const before = esc(r.snippet.slice(0, r.hl));
+      const hit = esc(r.snippet.slice(r.hl, r.hlEnd));
+      const after = esc(r.snippet.slice(r.hlEnd));
+      return '<button class="sr-item" type="button" data-i="' + i + '">' +
+        '<span class="sr-meta"><span class="sr-date">' + shortDate(r.date) + '</span>' +
+        '<span class="sr-title">' + esc(r.title) + '</span></span>' +
+        '<span class="sr-snippet">' + before + '<mark>' + hit + '</mark>' + after + '</span>' +
+        '</button>';
+    }).join("");
+    selResult(0);
+  }
+
+  async function runSearch() {
+    const q = searchInput.value.trim();
+    if (!q) {
+      searchResults.innerHTML = SEARCH_HINT;
+      searchCount.textContent = "";
+      searchList = [];
+      return;
+    }
+    const seq = ++searchSeq;
+    try {
+      const r = await fetch("/api/search?q=" + encodeURIComponent(q));
+      const data = await r.json();
+      if (seq !== searchSeq) return;        // 已经被更新的输入取代
+      renderResults(data.results || [], q);
+      searchCount.textContent = data.count ? data.count + " 处" : "";
+    } catch (e) {
+      if (seq === searchSeq) searchResults.innerHTML = '<div class="sr-hint">搜索失败</div>';
+    }
+  }
+
+  /* 同步关闭时预览不会自己跟过去，手动滚到对应块 */
+  function scrollPreviewToLine(line) {
+    if (!anchors.length) return;
+    let target = anchors[0];
+    for (let i = 0; i < anchors.length; i++) {
+      if (anchors[i].line <= line) target = anchors[i];
+      else break;
+    }
+    previewPane.scrollTop = Math.max(0, target.el.offsetTop - 20);
+  }
+
+  async function openResult(r) {
+    if (!r) return;
+    closeSearch();
+    if (r.date !== currentDate) await loadDate(r.date);
+    const line = Math.min(r.line, cm.lineCount() - 1);
+    const text = cm.getLine(line);
+    cm.setSelection(
+      { line: line, ch: Math.min(r.from, text.length) },
+      { line: line, ch: Math.min(r.to, text.length) }
+    );
+    cm.focus();
+    // 命中的句子落在编辑区中部，而不是贴着上边缘
+    const h = editorScroller.clientHeight;
+    cm.scrollIntoView({ line: line, ch: 0 }, Math.max(40, Math.round(h / 2)));
+    if (!syncEnabled) scrollPreviewToLine(line);
+  }
+
+  $("#searchBtn").addEventListener("click", (e) => { e.stopPropagation(); openSearch(); });
+  $("#searchClose").addEventListener("click", closeSearch);
+
+  searchInput.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(runSearch, 150);
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); selResult(searchSel + 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); selResult(searchSel - 1); }
+    else if (e.key === "Enter") { e.preventDefault(); openResult(searchList[searchSel]); }
+    else if (e.key === "Escape") { e.preventDefault(); closeSearch(); }
+  });
+
+  searchResults.addEventListener("click", (e) => {
+    const btn = e.target.closest(".sr-item");
+    if (!btn) return;
+    openResult(searchList[Number(btn.dataset.i)]);
+  });
+
+  searchOverlay.addEventListener("pointerdown", (e) => {
+    if (state.overlay !== "search") return;
+    if (e.target === searchOverlay) closeSearch();
+  });
+
+
   function toggleSidebar() {
     const app = $("#app");
     app.classList.toggle("side-collapsed");
@@ -1089,6 +1249,8 @@
 
     applyRatio(s.appearance.splitRatio);
     buildKeymap(s);
+    const sb = $("#searchBtn");
+    if (sb) sb.title = "搜索日记" + (s.shortcuts.search ? " (" + s.shortcuts.search + ")" : "");
     resetSyncGeometry();
     if (!opts || opts.refresh !== false) cm.refresh();
     saveDebounced = debounce(saveNow, s.general.autosaveDelay);
@@ -1128,6 +1290,7 @@
     ["code", "行内代码"],
     ["strike", "删除线"],
     ["link", "插入链接"],
+    ["search", "全文搜索"],
     ["h1", "一级标题"],
     ["h2", "二级标题"],
     ["h3", "三级标题"],
@@ -1200,6 +1363,13 @@
   document.addEventListener("keydown", (e) => {
     if (!S) return;
     if (recording) return;
+    // 搜索面板：默认 Ctrl/⌘+F，开合同一个键（Spotlight 手感）；可在设置里改绑
+    if (S.shortcuts.search && matchCombo(e, S.shortcuts.search)) {
+      e.preventDefault();
+      if (state.overlay === "search") closeSearch();
+      else openSearch();
+      return;
+    }
     if (!overlayOpen()) {
       for (const act of Object.keys(ACTIONS)) {
         if (EDITOR_ACTIONS.indexOf(act) >= 0) continue;
@@ -1213,6 +1383,7 @@
     if (e.key === "Escape") {
       if (state.overlay === "settings") { closeSettings(true); return; }
       if (state.overlay === "calendar") closeCalendar();
+      if (state.overlay === "search") closeSearch();
     }
   });
 

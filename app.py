@@ -14,6 +14,7 @@ import threading
 import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote
 
 _T0 = time.perf_counter()
 APP_VERSION = "1.3"
@@ -70,6 +71,7 @@ DEFAULT_SHORTCUTS = {
     "code": "Ctrl-E",
     "strike": "Ctrl-Shift-X",
     "link": "Ctrl-K",
+    "search": "Ctrl-F",
     "h1": "Ctrl-1",
     "h2": "Ctrl-2",
     "h3": "Ctrl-3",
@@ -297,6 +299,86 @@ def list_entries():
             "mtime": os.path.getmtime(p),
         })
     out.sort(key=lambda e: e["date"], reverse=True)
+    return out
+
+
+# ============ 全文搜索 ============
+# 逐行匹配，命中行再切出"所在句子"，前端只负责高亮与跳转。
+SENT_END = "。！？；…!?;．"
+
+
+def sentence_span(line, start, end_):
+    """把 [start, end_) 所在的句子边界切出来（含句末标点）"""
+    n = len(line)
+    s = start
+    while s > 0 and line[s - 1] not in SENT_END:
+        s -= 1
+    e = end_
+    while e < n and line[e] not in SENT_END:
+        e += 1
+    if e < n:
+        e += 1
+    return s, e
+
+
+def entry_title(text):
+    for line in text.splitlines():
+        t = line.strip().lstrip("#").strip()
+        if t:
+            return t[:40]
+    return ""
+
+
+def search_entries(q, limit=80, per_entry=6):
+    q = (q or "").strip()
+    if not q:
+        return []
+    ql = q.lower()
+    d = current_diary_dir()
+    try:
+        names = [n for n in os.listdir(d) if n.endswith(".md") and valid_date(n[:-3])]
+    except OSError:
+        return []
+    names.sort(reverse=True)          # 新日记排前面
+    out = []
+    for fn in names:
+        try:
+            with open(os.path.join(d, fn), "r", encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            continue
+        title = entry_title(text)
+        hits = 0
+        for i, line in enumerate(text.split("\n")):
+            if not line.strip():
+                continue
+            idx = line.lower().find(ql)
+            if idx < 0:
+                continue
+            s, e = sentence_span(line, idx, idx + len(q))
+            seg = line[s:e].rstrip()
+            # 去掉行首的 markdown 记号，但保持关键词偏移正确
+            lead = len(seg) - len(seg.lstrip("#>-*` \t"))
+            seg = seg[lead:]
+            hl = idx - s - lead
+            if hl < 0 or hl >= len(seg):
+                continue
+            out.append({
+                "date": fn[:-3],
+                "title": title,
+                "line": i,
+                "col": idx,
+                "snippet": seg,
+                "hl": hl,
+                "hlEnd": min(len(seg), hl + len(q)),
+                "from": s + lead,          # 句子在源码行里的范围，用于选中
+                "to": e,
+            })
+            hits += 1
+            if hits >= per_entry or len(out) >= limit:
+                break
+        if len(out) >= limit:
+            break
     return out
 
 
@@ -579,6 +661,14 @@ class Handler(BaseHTTPRequestHandler):
                         "exists": os.path.isfile(p)})
         elif path == "/api/list":
             self._json({"entries": list_entries(), "dir": current_diary_dir()})
+        elif path == "/api/search":
+            q = unquote(query.get("q", ""))
+            try:
+                limit = max(1, min(200, int(query.get("limit", "80"))))
+            except ValueError:
+                limit = 80
+            res = search_entries(q, limit)
+            self._json({"q": q, "count": len(res), "results": res})
         elif path.startswith("/static/"):
             rel = os.path.normpath(path[len("/static/"):])
             full = os.path.join(STATIC_DIR, rel)

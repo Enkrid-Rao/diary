@@ -61,6 +61,12 @@
       <span id="wordCount" class="meta"></span>
       <span class="meta-sep"></span>
       <span id="saveState" class="meta save-state"><span class="dot"></span><span id="saveText">已保存</span></span>
+      <button id="searchBtn" class="icon-btn" title="搜索日记 (Ctrl+F)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="10.6" cy="10.6" r="6.4"/>
+          <path d="M15.4 15.4L20.5 20.5"/>
+        </svg>
+      </button>
       <button id="settingsBtn" class="icon-btn" title="设置 (Ctrl+,)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3.1"/>
@@ -92,6 +98,29 @@
 </div>
 
 <div id="calendarPop" class="cal-pop"></div>
+
+<!-- ================= 搜索弹层 ================= -->
+<div id="searchOverlay" class="search-overlay">
+  <div class="search-panel" role="dialog" aria-modal="true" aria-label="搜索日记">
+    <div class="search-head">
+      <svg class="search-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+        <circle cx="10.6" cy="10.6" r="6.4"/><path d="M15.4 15.4L20.5 20.5"/>
+      </svg>
+      <input id="searchInput" class="search-input" type="text" spellcheck="false" autocomplete="off"
+             placeholder="搜索日记内容…" aria-label="搜索日记内容">
+      <span id="searchCount" class="search-count"></span>
+      <button id="searchClose" class="search-close" title="关闭 (Esc)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div id="searchResults" class="search-results"></div>
+    <div class="search-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
+      <span><kbd>↵</kbd> 打开</span>
+      <span><kbd>Esc</kbd> 关闭</span>
+    </div>
+  </div>
+</div>
 
 <!-- ================= 设置面板 ================= -->
 <div id="settingsOverlay" class="set-overlay">

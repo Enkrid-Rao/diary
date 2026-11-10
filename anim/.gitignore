@@ -2,6 +2,15 @@
 frames/
 .edge-profile/
 
+# 声音中间产物
+voice/
+build/
+diary-promo-silent.mp4
+
 # 试片段
 test-*.mp4
 preview-*.mp4
+
+# 临时分析脚本
+_*.py
+_*.png

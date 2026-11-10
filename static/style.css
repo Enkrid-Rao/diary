@@ -41,11 +41,28 @@
   --fs-lg: 15px;      /* 面板标题 */
   --fs-xl: 18px;      /* 日期标题 */
 
-  /* 圆角刻度：4 档 */
-  --r-sm: 8px;
-  --r-md: 11px;
+  /* 圆角刻度：6 档，按"嵌套递减"用（外 20 → 内 16 → 行 12 → 控件 9 → 键帽 6） */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 12px;
   --r-lg: 16px;
-  --r-pill: 99px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  /* 表面色阶：暗色界面靠"提亮"表达抬升，靠"压暗"表达凹陷。
+     s1 最沉（输入框 / 轨道 / 页脚条）→ s5 最高。具体数值每个主题各给一套，
+     见下面的 [data-theme] 块，别在这里写死。 */
+  --s1: #0c0d12;
+  --s2: #13151a;
+  --s3: #202229;
+  --s4: #2b2e36;
+  --s5: #373a44;
+
+  /* 层次描边：外沿 1px + 顶部 1px 提亮（"上面有光"），下沉件用内阴影 */
+  --edge-1: rgba(255, 255, 255, 0.07);
+  --edge-2: rgba(255, 255, 255, 0.11);
+  --edge-hi: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  --edge-in: inset 0 1px 2px rgba(0, 0, 0, 0.55);
 
   /* 间距刻度：4px 网格 */
   --sp-1: 4px;
@@ -111,18 +128,36 @@
   --hue-b: 143, 212, 224;
   --hue-c: 183, 154, 224;
   --glow-a: 0.13; --glow-b: 0.105; --glow-c: 0.095;
+  /* 表面色阶：往冷白偏，保留一点蓝味，避免抬升后变成"脏灰" */
+  --s1: #0c0d12;
+  --s2: #13151a;
+  --s3: #202229;
+  --s4: #2b2e36;
+  --s5: #373a44;
 }
 :root[data-theme="graphite"] {
   --ink: #0a0a0b;
   --hue-b: 168, 176, 188;
   --hue-c: 206, 200, 192;
   --glow-a: 0.075; --glow-b: 0.06; --glow-c: 0.055;
+  /* 石墨：往中性灰偏，不带色相 */
+  --s1: #101011;
+  --s2: #171718;
+  --s3: #252526;
+  --s4: #313132;
+  --s5: #3e3e3f;
 }
 :root[data-theme="ocean"] {
   --ink: #050910;
   --hue-b: 110, 176, 220;
   --hue-c: 126, 146, 226;
   --glow-a: 0.10; --glow-b: 0.15; --glow-c: 0.12;
+  /* 深海：往冷蓝偏，抬升后仍是一层"水"而不是岩层 */
+  --s1: #090e16;
+  --s2: #10161e;
+  --s3: #1a222c;
+  --s4: #242e38;
+  --s5: #2e3a45;
 }
 
 :root[data-accent="amber"] {
@@ -1541,7 +1576,7 @@ body[data-overlay="settings"] .set-dialog {
   0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.35); }
   50% { box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0); }
 }
-.sc-key.is-empty { color: #555a6e; }
+.sc-key.is-empty { color: #757d92; }
 
 /* ---- 底部操作条 ---- */
 .set-foot {
@@ -2007,4 +2042,282 @@ body[data-overlay="search"] .search-panel { transform: none; opacity: 1; }
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 10px;
+}
+
+/* ============ 18. 表面分层（v6） ==============================================
+   暗色界面里"抬升"不能靠投影——投影落在近黑底上根本看不见，只能靠把表面提亮一档。
+   这一节把设置面板 / 搜索面板 / 日历弹层三处浮层重做成同一套五级色阶：
+
+     s1 凹陷（输入框、轨道、键帽、页脚条）
+     s2 平面（对话框主体、面板底）
+     s3 抬升（分组卡片、搜索面板、日历）
+     s4 更高（悬停、菜单、选中段）
+     s5 最高（极少用）
+
+   圆角按"嵌套递减"排：面板 20 → 卡片 16 → 行 12 → 控件 9 → 键帽 6，内层永远比外层小，
+   这样同心的两圈圆弧才不会"撞角"。描边一律 1px，且都用"外沿 + 顶部提亮"两笔，
+   而不是一整圈同亮度——这是深色界面里看起来"精致"还是"廉价"的分水岭。
+   ========================================================================== */
+
+/* ---------- 18.1 设置面板 ---------- */
+
+/* 主体：抬到 s2，顶上一团极淡的强调色晕，避免整块死灰 */
+.set-dialog {
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(120% 72% at 12% -14%, rgba(var(--accent-rgb), 0.075), transparent 62%),
+    var(--s2);
+  border: 1px solid var(--edge-2);
+  box-shadow:
+    var(--sh-3),
+    var(--edge-hi),
+    0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+
+/* 左侧导航：沉到 s1，比主体更暗 —— 一眼就能分出"栏"和"页" */
+.set-nav {
+  background: var(--s1);
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+}
+/* 栏与页之间补一道 1px 提亮，模拟两片板子的接缝 */
+.set-body { box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.035); }
+
+.set-nav-title { color: #f2f4f9; }
+.set-nav-sub { color: #7a829a; }
+
+/* 滑动高亮块：在暗栏上做一块"浮起的强调色玻璃" */
+.set-nav-ind {
+  border-radius: var(--r-md);
+  background: linear-gradient(145deg, rgba(var(--accent-rgb), 0.17), rgba(var(--accent-rgb), 0.055));
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.set-tab { border-radius: var(--r-md); color: #939ab1; }
+.set-tab:hover { background: var(--s2); color: #e7e9f0; }
+.set-tab.is-active { color: var(--accent); }
+
+.set-head {
+  background: transparent;
+  border-bottom: 1px solid var(--edge-1);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.set-head h2 { color: #f5f6fa; }
+.set-head p { color: #7f879f; }
+
+.set-close { border-radius: var(--r-sm); }
+.set-close:hover { background: var(--s4); }
+
+/* 分组卡片：比主体再抬一档（s3），靠"色差 + 顶部提亮"立起来，不靠投影 */
+.set-card {
+  background: var(--s3);
+  border: 1px solid var(--edge-1);
+  border-radius: var(--r-lg);
+  box-shadow: var(--edge-hi);
+}
+/* 卡片是容器不是按钮：悬停只把描边提亮，不整块位移 */
+.set-card:hover {
+  background: var(--s3);
+  border-color: var(--edge-2);
+  transform: none;
+  box-shadow: var(--edge-hi);
+}
+
+.set-card-title { color: #8b93aa; letter-spacing: 2.6px; }
+.set-row + .set-row { border-top: 1px solid rgba(255, 255, 255, 0.045); }
+.set-name { color: #e9ebf2; }
+.set-hint-line { color: #868ea6; }
+.set-note { color: #868ea6; }
+
+/* 控件一律做成"碗"：底色回落到 s1 + 内阴影，读起来是嵌在卡片里的 */
+.txt-input,
+.sc-key,
+.seg,
+.sw {
+  background: var(--s1);
+  border-color: var(--edge-1);
+  box-shadow: var(--edge-in);
+}
+.txt-input { border-radius: var(--r-sm); }
+.txt-input::placeholder { color: #78819a; }
+.txt-input:hover { border-color: var(--edge-2); }
+.txt-input:focus {
+  background: var(--s1);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow: var(--edge-in), 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+}
+
+/* 幽灵按钮：默认透明只留一圈描边，落在卡片（s3）上不会跟输入框抢重量；
+   悬停才填 s4 —— 次级按钮永远不该比主按钮显眼 */
+.ghost-btn {
+  border-radius: var(--r-sm);
+  background: transparent;
+  border: 1px solid var(--edge-2);
+  color: #b9bfd0;
+  box-shadow: none;
+}
+.ghost-btn:hover {
+  background: var(--s4);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+/* 分段选择：iOS 式——选中项是"浮起的实体片"，不是染色胶囊 */
+.seg { border-radius: var(--r-md); padding: 3px; }
+.seg button { border-radius: var(--r-sm); }
+.seg button.is-on {
+  color: var(--accent);
+  background: var(--s4);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* 滑轨：轨道沉下去（内阴影），已填充段才发亮 */
+.rng::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(90deg,
+      rgba(var(--accent-rgb), 0.9) 0 var(--pct, 50%),
+      rgba(255, 255, 255, 0.07) var(--pct, 50%) 100%);
+  box-shadow: inset 0 1px 1.5px rgba(0, 0, 0, 0.55);
+}
+.rng::-webkit-slider-thumb { border-color: var(--s1); }
+
+/* 主题卡 / 强调色点：躺在卡片上，用 s2 做一层浅凹陷 */
+.theme-card,
+.accent-dot {
+  background: var(--s2);
+  border-color: var(--edge-1);
+  border-radius: var(--r-md);
+}
+.accent-dot { border-radius: var(--r-pill); }
+.theme-card:hover { background: var(--s3); border-color: var(--edge-2); }
+.accent-dot:hover { background: var(--s3); border-color: var(--edge-2); }
+.theme-card.is-on {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 6px 18px rgba(var(--accent-rgb), 0.1);
+}
+.theme-name { color: #e8eaf1; }
+.theme-desc { color: #7d859c; }
+
+/* 键帽：下沿压暗、上沿提亮，才像一颗能按的键 */
+.sc-key {
+  border-radius: var(--r-xs);
+  color: #cfd4e1;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+}
+.sc-key:hover { background: var(--s3); border-color: var(--edge-2); color: #fff; }
+.sc-row:hover { background: rgba(255, 255, 255, 0.028); }
+.sc-name { color: #dfe2ea; }
+
+/* 底部操作条：沉成一条深色工具条，和上面的滚动区彻底分开 */
+.set-foot {
+  background: var(--s1);
+  border-top: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ---------- 18.2 搜索面板 ---------- */
+
+.search-overlay {
+  background: radial-gradient(120% 100% at 50% 0%, rgba(5, 6, 10, 0.62), rgba(2, 3, 5, 0.8));
+}
+
+/* 面板：整体比设置对话框再高一档（它是"浮在内容上"的），上亮下沉做纵向渐变 */
+.search-panel {
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(120% 74% at 50% -16%, rgba(var(--accent-rgb), 0.08), transparent 62%),
+    linear-gradient(180deg, var(--s3) 0%, var(--s2) 58%, var(--s2) 100%);
+  /* 兜底色：渐变画满整块，但留一个纯色底，避免半透明处透出后面的内容 */
+  background-color: var(--s2);
+  border: 1px solid var(--edge-2);
+  box-shadow:
+    var(--sh-3),
+    var(--edge-hi),
+    0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.search-head {
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--edge-1);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.search-input { font-size: 15px; }
+.search-count { color: #868ea6; }
+.search-close { border-radius: var(--r-sm); }
+.search-close:hover { background: var(--s4); }
+
+.search-results { padding: 8px; }
+
+.sr-item { border-radius: var(--r-md); padding: 11px 12px; }
+.sr-item + .sr-item { margin-top: 3px; }
+.sr-item:hover { background: rgba(255, 255, 255, 0.035); border-color: transparent; }
+.sr-item.is-sel {
+  background: linear-gradient(150deg, rgba(var(--accent-rgb), 0.17), rgba(var(--accent-rgb), 0.065));
+  border-color: rgba(var(--accent-rgb), 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 6px 16px rgba(0, 0, 0, 0.24);
+}
+.sr-date { color: var(--accent); letter-spacing: 0.8px; }
+.sr-title { color: #8d94a9; }
+.sr-snippet { color: #b6bccd; }
+.sr-item.is-sel .sr-snippet { color: #f0f2f7; }
+
+.search-foot {
+  background: var(--s1);
+  border-top: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 9px 16px;
+}
+.search-foot kbd {
+  border-radius: var(--r-xs);
+  background: var(--s3);
+  border: 1px solid var(--edge-2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  color: #cdd2df;
+}
+.sr-hint { color: #868ea6; }
+
+/* ---------- 18.3 日历弹层 ---------- */
+
+.cal-pop {
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(110% 70% at 50% -12%, rgba(var(--accent-rgb), 0.06), transparent 60%),
+    linear-gradient(165deg, var(--s3), var(--s1));
+  border: 1px solid var(--edge-2);
+  box-shadow:
+    var(--sh-3),
+    var(--edge-hi),
+    0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+.cal-week { border-bottom: 1px solid var(--edge-1); padding-bottom: 4px; }
+.cal-day { border-radius: var(--r-sm); }
+.cal-day:hover { background: var(--s4); }
+.cal-nav { border-radius: var(--r-sm); }
+.cal-nav:hover { background: var(--s4); }
+
+/* ---------- 18.4 主界面：栏与纸的色差 ----------
+   侧栏（栏）比工作区（纸）压暗一档，只压 2-4%，肉眼不觉得"变黑了"，
+   但两片板子立刻分得开——这是把"统一单调"拆开的最小改动。 */
+#sidebar {
+  background:
+    linear-gradient(180deg, rgba(3, 4, 8, 0.34), rgba(3, 4, 8, 0.1) 52%, rgba(3, 4, 8, 0.24)),
+    var(--glass);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+#workspace {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.004) 40%, rgba(255, 255, 255, 0.012)),
+    var(--glass);
 }

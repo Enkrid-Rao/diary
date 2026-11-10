@@ -1438,6 +1438,7 @@
     setOverlay("settings");
     $("#setHint").textContent = "";
     $("#setHint").className = "set-hint";
+    moveIndicator();
     requestAnimationFrame(moveIndicator);
   }
 
@@ -1469,6 +1470,7 @@
     $("#setSubtitle").textContent = m[1];
     const sc = document.querySelector(".set-scroll");
     if (sc) sc.scrollTop = 0;
+    moveIndicator();
     requestAnimationFrame(moveIndicator);
   }
 

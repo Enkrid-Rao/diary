@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
 
 _T0 = time.perf_counter()
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.5.0"
 
 if getattr(sys, "frozen", False):
     # PyInstaller windowed 模式下 OS 层 stdout/stderr 句柄无效，

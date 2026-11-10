@@ -3,7 +3,12 @@
 ; 产物：dist\Diary-<版本>-win64-setup.exe
 
 #define AppName "Diary"
-#define AppVersion "1.4.0"
+; 版本号由 build_release.py 写进 build\version.iss，避免两处手改
+#if FileExists(AddBackslash(SourcePath) + "build\version.iss")
+  #include AddBackslash(SourcePath) + "build\version.iss"
+#else
+  #define AppVersion "0.0.0"
+#endif
 #define AppPublisher "Enkrid-Rao"
 #define AppURL "https://github.com/Enkrid-Rao/diary"
 #define AppExe "Diary.exe"

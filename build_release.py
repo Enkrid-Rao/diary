@@ -126,6 +126,9 @@ def main():
     args = ap.parse_args()
 
     ver = app_version()
+    os.makedirs(os.path.join(HERE, "build"), exist_ok=True)
+    with open(os.path.join(HERE, "build", "version.iss"), "w", encoding="utf-8") as f:
+        f.write('#define AppVersion "%s"\n' % ver)
     build()
     folder = os.path.join(DIST, APP_NAME)
     if not os.path.isdir(folder):

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日记</title>
+<link rel="icon" href="/static/favicon.ico">
+<link rel="stylesheet" href="/static/vendor/codemirror/codemirror.css">
+<link rel="stylesheet" href="/static/vendor/codemirror/dracula.css">
+<link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 侧边栏：日记列表 -->
+  <aside id="sidebar">
+    <div class="side-head">
+      <div class="logo-badge">
+      <svg class="side-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5z"/>
+        <path d="M20 17v5H6.5a2.5 2.5 0 0 1 0-5"/>
+      </svg>
+      </div>
+      <span class="side-title">日记</span>
+    </div>
+    <div id="entryList" class="entry-list"></div>
+    <div class="side-foot"><span id="totalCount"></span></div>
+  </aside>
+
+  <!-- 主区 -->
+  <div id="main">
+    <header id="topbar">
+      <button id="toggleSide" class="icon-btn" title="收起/展开列表 (Ctrl+\)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+
+      <div class="date-nav">
+        <button id="prevDay" class="icon-btn" title="前一天 (Alt+←)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="date-block">
+          <div id="dateTitle" class="date-title"></div>
+          <div id="dateSub" class="date-sub"></div>
+        </div>
+        <button id="nextDay" class="icon-btn" title="后一天 (Alt+→)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <button id="todayBtn" class="pill-btn">回到今天</button>
+      <button id="calBtn" class="icon-btn" title="跳转到任意日期">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4.5" width="18" height="17" rx="3"/>
+          <path d="M8 2.5v4M16 2.5v4M3 10h18"/>
+        </svg>
+      </button>
+
+      <div class="spacer"></div>
+
+      <span id="wordCount" class="meta"></span>
+      <span class="meta-sep"></span>
+      <span id="saveState" class="meta save-state"><span class="dot"></span><span id="saveText">已保存</span></span>
+      <button id="settingsBtn" class="icon-btn" title="设置 (Ctrl+,)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3.1"/>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.11a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.11a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.11a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.11a1.7 1.7 0 0 0-1.49 1.03z"/>
+        </svg>
+      </button>
+    </header>
+
+    <div id="workspace">
+      <div id="editorPane">
+        <textarea id="editor"></textarea>
+      </div>
+      <div id="divider" title="拖拽调整 · 双击重置"></div>
+      <div id="previewPane">
+        <div id="preview" class="md-body"></div>
+        <div id="previewEmpty" class="preview-empty">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M48 31c-6-4-13-6.5-21-6.5-3 0-5.2.4-7 1.1v43.8c1.9-.7 4-1.1 7-1.1 8 0 15 2.5 21 6.5"/>
+            <path d="M48 31c6-4 13-6.5 21-6.5 3 0 5.2.4 7 1.1v43.8c-1.9-.7-4-1.1-7-1.1-8 0-15 2.5-21 6.5"/>
+            <path d="M48 31v43.8" opacity="0.6"/>
+            <path class="accent-stroke" d="M29 42h10M29 51h7M58 42h10M58 51h7"/>
+            <path class="accent-stroke" d="M76.5 16.5l2.6 5.9 5.9 2.6-5.9 2.6-2.6 5.9-2.6-5.9-5.9-2.6 5.9-2.6z"/>
+          </svg>
+          <span>左边开始写 · 这里实时渲染 · 支持 LaTeX</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="calendarPop" class="cal-pop"></div>
+
+<!-- ================= 设置面板 ================= -->
+<div id="settingsOverlay" class="set-overlay">
+  <div class="set-dialog" role="dialog" aria-modal="true" aria-label="设置">
+
+    <aside class="set-nav">
+      <div class="set-nav-head">
+        <span class="set-nav-title">设置</span>
+        <span class="set-nav-sub">SETTINGS</span>
+      </div>
+      <span class="set-nav-ind" id="setNavInd" aria-hidden="true"></span>
+      <button class="set-tab is-active" data-tab="general">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h4M12 6h9M3 12h10M18 12h3M3 18h2M10 18h11"/><path d="M10 3.5v5M16 9.5v5M8 15.5v5"/></svg>
+        <span>常规</span>
+      </button>
+      <button class="set-tab" data-tab="appearance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4a8.6 8.6 0 0 1 0 17.2z" fill="currentColor" stroke="none" opacity="0.9"/></svg>
+        <span>外观</span>
+      </button>
+      <button class="set-tab" data-tab="editor">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h11M4 17h7"/></svg>
+        <span>编辑器</span>
+      </button>
+      <button class="set-tab" data-tab="shortcuts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="3"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>
+        <span>快捷键</span>
+      </button>
+      <div class="set-nav-foot"><span id="setVersion">Diary</span></div>
+    </aside>
+
+    <section class="set-body">
+      <header class="set-head">
+        <h2 id="setTitle">常规</h2>
+        <p id="setSubtitle">日记存放位置、自动保存与启动行为</p>
+        <button class="set-close" id="setClose" title="关闭 (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="set-scroll">
+
+        <!-- ---------- 常规 ---------- -->
+        <div class="set-pane is-active" data-pane="general">
+
+          <section class="set-card">
+            <h3 class="set-card-title">文件与保存</h3>
+
+            <div class="set-row is-stack">
+              <div class="set-lab">
+                <span class="set-name">日记目录</span>
+                <span class="set-hint-line">所有日记以 YYYY-MM-DD.md 存放于此；换目录只影响之后写入的位置，不会迁移已有文件</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setDir" class="txt-input" type="text" spellcheck="false" placeholder="留空 = 程序目录下的 diaries\">
+                <button class="ghost-btn" id="setBrowse">浏览</button>
+                <button class="ghost-btn" id="setOpenDir">打开</button>
+              </div>
+              <div class="set-note" id="setDirNote"></div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">自动保存延迟</span>
+                <span class="set-hint-line">停止输入后多久写入磁盘</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setAutosave" class="rng" type="range" min="200" max="3000" step="100">
+                <span class="set-val" id="setAutosaveVal">900 ms</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="set-card">
+            <h3 class="set-card-title">启动与窗口</h3>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">启动时打开</span>
+                <span class="set-hint-line">"上次编辑的日期"只在 90 天内有效，太久以前会自动回到今天</span>
+              </div>
+              <div class="set-ctl">
+                <div class="seg" id="setStartup">
+                  <button data-v="today">今天</button>
+                  <button data-v="last">上次编辑的日期</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">记住窗口大小与位置</span>
+                <span class="set-hint-line">下次启动按上次的窗口几何还原</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setRememberWin" role="switch" aria-checked="true"></button>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- ---------- 外观 ---------- -->
+        <div class="set-pane" data-pane="appearance">
+
+          <section class="set-card">
+            <h3 class="set-card-title">主题</h3>
+
+            <div class="set-row is-stack">
+              <div class="set-lab">
+                <span class="set-name">底色</span>
+                <span class="set-hint-line">整套背景底色与氛围光</span>
+              </div>
+              <div class="set-ctl">
+                <div class="theme-grid" id="setTheme">
+                  <button class="theme-card" data-v="ink">
+                    <span class="theme-swatch" data-swatch="ink"></span>
+                    <span class="theme-name">墨夜</span>
+                    <span class="theme-desc">冷黑 + 暖光</span>
+                  </button>
+                  <button class="theme-card" data-v="graphite">
+                    <span class="theme-swatch" data-swatch="graphite"></span>
+                    <span class="theme-name">石墨</span>
+                    <span class="theme-desc">中性灰，最克制</span>
+                  </button>
+                  <button class="theme-card" data-v="ocean">
+                    <span class="theme-swatch" data-swatch="ocean"></span>
+                    <span class="theme-name">深海</span>
+                    <span class="theme-desc">深蓝，偏冷</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="set-row is-stack">
+              <div class="set-lab">
+                <span class="set-name">强调色</span>
+                <span class="set-hint-line">标题、选区、按钮与高亮统一取色</span>
+              </div>
+              <div class="set-ctl">
+                <div class="accent-row" id="setAccent">
+                  <button class="accent-dot" data-v="amber" title="琥珀"><span></span><em>琥珀</em></button>
+                  <button class="accent-dot" data-v="cyan" title="青蓝"><span></span><em>青蓝</em></button>
+                  <button class="accent-dot" data-v="violet" title="暮紫"><span></span><em>暮紫</em></button>
+                  <button class="accent-dot" data-v="rose" title="绯樱"><span></span><em>绯樱</em></button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="set-card">
+            <h3 class="set-card-title">质感</h3>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">顶栏样式</span>
+                <span class="set-hint-line">融合：无边框，与页面连成一体；玻璃：悬浮的毛玻璃卡片</span>
+              </div>
+              <div class="set-ctl">
+                <div class="seg" id="setTopbar">
+                  <button data-v="flat">融合无框</button>
+                  <button data-v="glass">悬浮玻璃</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">玻璃模糊强度</span>
+                <span class="set-hint-line">数值越高背景越朦胧，过低会显得扁平</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setBlur" class="rng" type="range" min="0" max="44" step="1">
+                <span class="set-val" id="setBlurVal">30 px</span>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">环境光晕</span>
+                <span class="set-hint-line">背景缓慢流动的彩色光，关掉更省电</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setAurora" role="switch" aria-checked="true"></button>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">胶片颗粒</span>
+                <span class="set-hint-line">极淡的噪点，用来压住大面积渐变的塑料感</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setGrain" role="switch" aria-checked="true"></button>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">界面动效</span>
+                <span class="set-hint-line">弹层过渡、列表错峰入场、翻页位移；关掉后所有动画瞬时完成</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setMotion" role="switch" aria-checked="true"></button>
+              </div>
+            </div>
+          </section>
+
+          <section class="set-card">
+            <h3 class="set-card-title">版式</h3>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">侧边栏宽度</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setSideW" class="rng" type="range" min="200" max="340" step="2">
+                <span class="set-val" id="setSideWVal">258 px</span>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">预览区最大宽度</span>
+                <span class="set-hint-line">正文栏过宽不易阅读，650 左右通常最舒服</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setPreviewW" class="rng" type="range" min="520" max="980" step="10">
+                <span class="set-val" id="setPreviewWVal">660 px</span>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- ---------- 编辑器 ---------- -->
+        <div class="set-pane" data-pane="editor">
+
+          <section class="set-card">
+            <h3 class="set-card-title">文字</h3>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">正文字号</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setFontSize" class="rng" type="range" min="11" max="22" step="1">
+                <span class="set-val" id="setFontSizeVal">14 px</span>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">行高</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setLineHeight" class="rng" type="range" min="1.4" max="2.6" step="0.05">
+                <span class="set-val" id="setLineHeightVal">1.85</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="set-card">
+            <h3 class="set-card-title">布局</h3>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">分栏比例</span>
+                <span class="set-hint-line">编辑区占工作区的宽度，也可以直接拖中间的分隔条</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setSplit" class="rng" type="range" min="20" max="80" step="1">
+                <span class="set-val" id="setSplitVal">50 %</span>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">同步滚动</span>
+                <span class="set-hint-line">开启后两栏按内容位置对齐联动；关闭则各滚各的。左侧分栏把手亮起即为开启</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setSyncScroll" role="switch" aria-checked="true"></button>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">Tab 宽度</span>
+              </div>
+              <div class="set-ctl">
+                <div class="seg" id="setTabSize">
+                  <button data-v="2">2</button>
+                  <button data-v="4">4</button>
+                  <button data-v="8">8</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="set-card">
+            <h3 class="set-card-title">输入辅助</h3>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">自动配对符号</span>
+                <span class="set-hint-line">输入 ( [ { ' " ` $ 自动补另一半；在闭合符前再输入一次会跳过</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setAutoPairs" role="switch" aria-checked="true"></button>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">回车延续列表</span>
+                <span class="set-hint-line">在 - 或 1. 结尾的行回车时自动补上下一个标记</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setContinueList" role="switch" aria-checked="true"></button>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">显示行号</span>
+                <span class="set-hint-line">左侧加一列行号，写长文时便于定位</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setLineNumbers" role="switch" aria-checked="false"></button>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- ---------- 快捷键 ---------- -->
+        <div class="set-pane" data-pane="shortcuts">
+
+          <section class="set-card">
+            <h3 class="set-card-title">键位绑定</h3>
+            <div class="set-row is-stack">
+              <div class="set-lab">
+                <span class="set-hint-line">点右侧按键框后直接按下新的组合键；Esc 取消，Backspace 清除。若组合已被占用，原来的绑定会自动让出。</span>
+              </div>
+              <div class="set-ctl">
+                <div class="sc-list" id="scList"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="set-card">
+            <h3 class="set-card-title">重置</h3>
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">恢复默认键位</span>
+                <span class="set-hint-line">只影响快捷键，其他设置保持不变</span>
+              </div>
+              <div class="set-ctl">
+                <button class="ghost-btn" id="scResetAll">全部恢复默认</button>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+      </div>
+
+      <footer class="set-foot">
+        <button class="ghost-btn" id="setReset">恢复默认设置</button>
+        <span class="spacer"></span>
+        <span class="set-hint" id="setHint"></span>
+        <button class="ghost-btn" id="setCancel">取消</button>
+        <button class="pill-btn" id="setSave">保存</button>
+      </footer>
+    </section>
+
+  </div>
+</div>
+
+<script src="/static/vendor/codemirror/codemirror.js"></script>
+<script src="/static/vendor/codemirror/mode/markdown.js"></script>
+<script src="/static/vendor/codemirror/mode/xml.js"></script>
+<script src="/static/vendor/codemirror/mode/javascript.js"></script>
+<script src="/static/vendor/codemirror/mode/css.js"></script>
+<script src="/static/vendor/codemirror/mode/htmlmixed.js"></script>
+<script src="/static/vendor/codemirror/mode/python.js"></script>
+<script src="/static/vendor/codemirror/mode/clike.js"></script>
+<script src="/static/vendor/codemirror/mode/shell.js"></script>
+<script src="/static/vendor/codemirror/mode/sql.js"></script>
+<script src="/static/vendor/codemirror/mode/yaml.js"></script>
+<script src="/static/vendor/codemirror/mode/meta.js"></script>
+<script src="/static/vendor/codemirror/addon/continuelist.js"></script>
+<script src="/static/vendor/codemirror/addon/closebrackets.js"></script>
+<script src="/static/vendor/codemirror/addon/active-line.js"></script>
+<script src="/static/vendor/codemirror/addon/matchbrackets.js"></script>
+<script src="/static/vendor/codemirror/addon/placeholder.js"></script>
+<script src="/static/vendor/markdown-it.min.js"></script>
+<script src="/static/vendor/katex/katex.min.js"></script>
+<script src="/static/vendor/katex/auto-render.min.js"></script>
+<script src="/static/latex-data.js"></script>
+<script src="/static/latex-hint.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

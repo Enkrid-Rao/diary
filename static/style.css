@@ -364,19 +364,88 @@ body[data-overlay] #app { transform: scale(0.988); }
   background: linear-gradient(180deg, transparent, var(--line-2) 4%, var(--line-2) 96%, transparent);
 }
 
-/* 月份标题：粘性吸顶，滚动时始终知道自己在哪个月 */
+/* 月份分组头：可折叠按钮。
+   侧栏本身是半透明玻璃，任何实心/半透明底衬都会在暖色极光上压出一块"补丁"，
+   所以这里干脆不设底衬——只用一条两端淡出的细线做分组，悬停时整行浮起。
+   这样无论滚动到哪个位置，都看不到色块边界，和玻璃语言一致。 */
+.month + .month { margin-top: 2px; }
 .month-group {
-  position: sticky; top: 0; z-index: 3;
-  font-size: var(--fs-xs); color: var(--faint);
-  letter-spacing: 2.5px;
-  padding: 14px 0 7px 16px;
-  margin-bottom: 2px;
-  user-select: none;
+  position: relative;
+  display: flex; align-items: center; gap: 7px;
+  width: 100%;
+  padding: 13px 8px 10px 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs); font-weight: 500;
+  color: var(--faint);
+  letter-spacing: 1.5px;
+  user-select: none; cursor: pointer;
   font-variant-numeric: tabular-nums;
-  background: rgba(8, 9, 13, 0.86);
-  background: color-mix(in srgb, var(--ink) 88%, transparent);
-  backdrop-filter: none;
+  background: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  text-align: left;
+  transition: color var(--dur-1) var(--ease);
 }
+/* 悬停：一层极淡的高亮，暗示"整行可点" */
+.month-group::after {
+  content: "";
+  position: absolute; inset: 3px -6px 3px -4px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.042);
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease);
+  pointer-events: none;
+}
+.month-group:hover::after { opacity: 1; }
+/* 分组分隔线：两端淡出，不和内容抢注意力 */
+.month-group::before {
+  content: "";
+  position: absolute; left: 6px; right: 4px; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-2) 10%, var(--line-2) 90%, transparent);
+  transition: opacity var(--dur-2) var(--ease);
+  opacity: 0.55;
+}
+.month:first-child .month-group::before { opacity: 0; }
+.month-group:hover { color: var(--muted); }
+.month-group:hover::before { opacity: 1; }
+.month-group:active { transform: translateY(1px); }
+.month-group:focus-visible { outline: 2px solid rgba(var(--accent-rgb), 0.6); outline-offset: -2px; }
+
+/* 箭头：在时间线主轴上，展开指下、折叠指右 */
+.mg-chev {
+  width: 13px; height: 13px; flex: none;
+  margin-left: 0;
+  color: var(--faint);
+  transition: transform var(--dur-2) var(--ease), color var(--dur-1) var(--ease);
+}
+.month-group:hover .mg-chev { color: var(--accent); }
+.month.is-collapsed .mg-chev { transform: rotate(-90deg); }
+
+.mg-label { font-weight: 600; letter-spacing: 1.8px; color: var(--muted); }
+.month-group:hover .mg-label { color: var(--text); }
+
+/* 篇数小药丸：比"条目"轻一档，悬停时才抬起来 */
+.mg-count {
+  margin-left: auto;
+  font-size: 10px; letter-spacing: 0.5px; font-weight: 500;
+  color: var(--faint);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-pill);
+  padding: 1px 7px;
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+.month-group:hover .mg-count { border-color: var(--line-2); color: var(--muted); }
+
+/* 折叠：grid-template-rows 1fr→0fr，高度过渡天然平滑 */
+.month-items {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--dur-3) var(--ease);
+}
+.month-inner { overflow: hidden; min-height: 0; padding-left: 0; }
+.month.is-collapsed .month-items { grid-template-rows: 0fr; }
+
 
 .entry-item {
   display: block; width: 100%;
@@ -903,7 +972,7 @@ body.topbar-glass #topbar::after { display: none; }
 .md-body img { max-width: 100%; border-radius: var(--r-md); }
 
 .md-body .katex-display { margin: 1.3em 0; padding: 0.6em 0; overflow-x: auto; overflow-y: hidden; }
-.md-body .katex { color: #e9ecf3; font-size: 1.05em; }
+.md-body .katex { color: var(--text); font-size: 1.05em; }
 
 /* ============ 11. 日历弹层 ==================================================
    常驻 DOM，状态由 body[data-overlay="calendar"] 决定，进出都有过渡。
@@ -939,12 +1008,65 @@ body[data-overlay="calendar"] .cal-pop {
 }
 
 .cal-head { display: flex; align-items: center; gap: 5px; margin-bottom: var(--sp-3); }
+/* 标题是可点的：悬停提亮、右侧露出小铅笔，点击换成日期输入框 */
 .cal-title {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px 3px 4px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: var(--font-ui);
   font-size: var(--fs-md); font-weight: 600; letter-spacing: 2px;
   color: #eef0f5;
+  cursor: pointer;
   font-variant-numeric: tabular-nums;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
+.cal-title:hover { background: rgba(255, 255, 255, 0.07); color: var(--accent); border-color: var(--line-1); }
+.cal-title:active { transform: scale(var(--press-2)); transition-duration: var(--dur-0); }
+.cal-title-ico {
+  width: 12px; height: 12px; color: var(--faint);
+  /* 常驻一点存在感，让人知道标题能点；悬停时才完全点亮 */
+  opacity: 0.4; transform: none;
+  transition: opacity var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.cal-title:hover .cal-title-ico { opacity: 1; color: var(--accent); }
 .cal-spacer { flex: 1; }
+
+/* 跳转输入框：沉底碗形，非法输入抖一下 + 描边变红 */
+.cal-jump-input {
+  flex: 1; min-width: 0;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--edge-2);
+  background: var(--s1);
+  box-shadow: var(--edge-in);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm); letter-spacing: 1px;
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.cal-jump-input:focus { border-color: rgba(var(--accent-rgb), 0.55); box-shadow: var(--edge-in), 0 0 0 3px rgba(var(--accent-rgb), 0.14); }
+.cal-jump-input.is-bad { border-color: rgba(217, 96, 90, 0.7); animation: shakeX var(--dur-3) var(--ease); }
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.cal-jump-cancel {
+  height: 28px; padding: 0 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--edge-2);
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs); letter-spacing: 1px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.cal-jump-cancel:hover { background: var(--s4); color: var(--text); }
 
 .cal-today {
   height: 24px; padding: 0 10px;
@@ -2493,7 +2615,10 @@ html[data-mode="light"] .cm-s-dracula .cm-variable-2 { color: #24262e; }
 html[data-mode="light"] .cm-s-dracula .cm-variable-3,
 html[data-mode="light"] .cm-s-dracula .cm-type { color: #9a5a1e; }
 html[data-mode="light"] .cm-s-dracula div.CodeMirror-selected { background: rgba(var(--accent-rgb), 0.16); }
-html[data-mode="light"] .cm-s-dracula .CodeMirror-activeline-background { background: rgba(24, 26, 34, 0.028); }
+html[data-mode="light"] .cm-s-dracula .CodeMirror-activeline-background {
+  background: linear-gradient(90deg, rgba(24, 26, 34, 0.052), transparent 55%);
+  box-shadow: inset 2px 0 0 rgba(var(--accent-rgb), 0.55);
+}
 html[data-mode="light"] .cm-s-dracula .CodeMirror-matchingbracket {
   color: var(--accent) !important;
   background: rgba(var(--accent-rgb), 0.1);
@@ -2529,8 +2654,11 @@ html[data-mode="light"] .preview-empty svg {
 }
 html[data-mode="light"] .preview-empty span { color: var(--faint); }
 
+html[data-mode="light"] .month-group::after { background: rgba(24, 26, 34, 0.045); }
+
 /* ---------- 19.9 日历 ---------- */
 html[data-mode="light"] .cal-title { color: var(--text); }
+html[data-mode="light"] .cal-title:hover { background: rgba(24, 26, 34, 0.05); }
 html[data-mode="light"] .cal-day { color: #3a3d47; }
 html[data-mode="light"] .cal-day.other { color: #a9afbd; }
 html[data-mode="light"] .cal-day.selected {
@@ -2646,6 +2774,14 @@ html[data-mode="light"] .search-panel {
 }
 html[data-mode="light"] .search-count,
 html[data-mode="light"] .sr-hint { color: var(--faint); }
+html[data-mode="light"] .search-foot kbd {
+  background: #ffffff;
+  border-color: rgba(24, 26, 34, 0.14);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 1px 0 rgba(24, 26, 34, 0.06);
+  color: #3a3d47;
+}
 html[data-mode="light"] .search-input::placeholder { color: var(--faint); }
 html[data-mode="light"] .sr-title { color: var(--muted); }
 html[data-mode="light"] .sr-snippet { color: #2c2f38; }

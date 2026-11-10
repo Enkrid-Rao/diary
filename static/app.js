@@ -15,6 +15,20 @@
   const EASE_SPRING = "cubic-bezier(0.34, 1.16, 0.64, 1)";
   const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  // ---------- 字体预设（与 style.css 的 --font-ui / --font-mono 对齐） ----------
+  /* 界面字体默认 editor = 跟着编辑区走（"把编辑区所用字体设为默认字体"）；
+     custom 用用户输入的字体串。 */
+  const FONT_UI_STACKS = {
+    editor: '"JetBrainsLxgwNerdMono", "JetBrains Mono", "Noto Sans SC", monospace',
+    system: 'system-ui, "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif',
+    wenkai: '"LXGW WenKai", "Noto Serif SC", serif',
+  };
+  const FONT_ED_STACKS = {
+    jetbrains: '"JetBrainsLxgwNerdMono", "JetBrains Mono", "Noto Sans SC", monospace',
+    system: '"Cascadia Mono", "Consolas", "Courier New", monospace',
+    wenkai: '"LXGW WenKai", "Noto Serif SC", serif',
+  };
+
   // ---------- 工具 ----------
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.prototype.slice.call(document.querySelectorAll(s));
@@ -542,31 +556,69 @@
       return;
     }
     const today = fmt(new Date());
-    let html = "";
-    let lastMonth = "";
-    let i = 0;
+    const collapsed = new Set((S.ui && S.ui.collapsedMonths) || []);
+
+    // 按月分组：每组一个 .month 容器，组头是 sticky 的可点按钮
+    const groups = [];
     for (const e of entries) {
-      const month = e.date.slice(0, 7);
-      if (month !== lastMonth) {
-        lastMonth = month;
-        const [y, m] = month.split("-");
-        const isThisMonth = month === today.slice(0, 7);
-        html += `<div class="month-group">${y}年${Number(m)}月${isThisMonth ? " · 本月" : ""}</div>`;
-      }
-      const d = parseDate(e.date);
-      const excerpt = e.excerpt ? esc(e.excerpt) : "<i style='opacity:.5'>（无文字）</i>";
+      const m = e.date.slice(0, 7);
+      let g = groups[groups.length - 1];
+      if (!g || g.month !== m) { g = { month: m, items: [] }; groups.push(g); }
+      g.items.push(e);
+    }
+
+    let html = "";
+    let i = 0;
+    for (const g of groups) {
+      const [y, m] = g.month.split("-");
+      const isThisMonth = g.month === today.slice(0, 7);
+      const isCollapsed = collapsed.has(g.month);
       html += `
-        <button class="entry-item" data-date="${e.date}" style="--i:${i}">
-          <span class="row1"><span class="day">${d.getDate()}日</span><span class="dow">周${DOW[d.getDay()]}</span></span>
-          <span class="excerpt">${excerpt}</span>
-        </button>`;
-      i++;
+        <div class="month${isCollapsed ? " is-collapsed" : ""}" data-month="${g.month}">
+          <button class="month-group" aria-expanded="${isCollapsed ? "false" : "true"}" title="点击${isCollapsed ? "展开" : "折叠"}">
+            <svg class="mg-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            <span class="mg-label">${y}年${Number(m)}月${isThisMonth ? " · 本月" : ""}</span>
+            <span class="mg-count">${g.items.length} 篇</span>
+          </button>
+          <div class="month-items"><div class="month-inner">`;
+      for (const e of g.items) {
+        const d = parseDate(e.date);
+        const excerpt = e.excerpt ? esc(e.excerpt) : "<i style='opacity:.5'>（无文字）</i>";
+        html += `
+          <button class="entry-item" data-date="${e.date}" style="--i:${i}">
+            <span class="row1"><span class="day">${d.getDate()}日</span><span class="dow">周${DOW[d.getDay()]}</span></span>
+            <span class="excerpt">${excerpt}</span>
+          </button>`;
+        i++;
+      }
+      html += `</div></div></div>`;
     }
     list.innerHTML = html;
+
+    list.querySelectorAll(".month-group").forEach((btn) => {
+      btn.addEventListener("click", () => toggleMonth(btn.closest(".month")));
+    });
     list.querySelectorAll(".entry-item").forEach((btn) => {
       btn.addEventListener("click", () => loadDate(btn.dataset.date));
     });
     markActiveItem();
+  }
+
+  // 折叠/展开一个月分组，并把状态静默存回 settings.json
+  function toggleMonth(box) {
+    if (!box) return;
+    const m = box.dataset.month;
+    const on = box.classList.toggle("is-collapsed");
+    box.querySelector(".month-group").setAttribute("aria-expanded", on ? "false" : "true");
+    if (!S.ui) S.ui = { collapsedMonths: [] };
+    const set = new Set(S.ui.collapsedMonths);
+    if (on) set.add(m); else set.delete(m);
+    S.ui.collapsedMonths = [...set].sort();
+    fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(S),
+    }).catch(() => {});
   }
 
   // 保存后轻量更新列表项（不重新拉取整个列表）
@@ -674,7 +726,9 @@
 
     calPop.innerHTML = `
       <div class="cal-head">
-        <span class="cal-title">${y}年${pad(m + 1)}月</span>
+        <button class="cal-title" data-act="jump" title="点击跳转日期">${y}年${pad(m + 1)}月
+          <svg class="cal-title-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        </button>
         <span class="cal-spacer"></span>
         <button class="cal-today" data-act="today">今天</button>
         <button class="cal-nav" data-act="prev" aria-label="上个月">
@@ -707,6 +761,51 @@
       setOverlay(null);
       loadDate(fmt(new Date()));
     });
+    calPop.querySelector(".cal-title").addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      showCalJump();
+    });
+  }
+
+  /* 点击月份标题 → 头部换成一个输入框：YYYY-MM-DD，Enter 跳转，Esc 取消 */
+  const CAL_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  function showCalJump() {
+    const head = calPop.querySelector(".cal-head");
+    if (!head) return;
+    head.innerHTML = `
+      <input class="cal-jump-input" value="${currentDate}" placeholder="YYYY-MM-DD"
+             maxlength="10" spellcheck="false" autocomplete="off" aria-label="跳转到日期">
+      <span class="cal-spacer"></span>
+      <button class="cal-jump-cancel">取消</button>`;
+    const input = head.querySelector(".cal-jump-input");
+    const restore = () => renderCalendar();
+    const submit = () => {
+      const v = input.value.trim();
+      /* 正则只看形状，2026-13-40 这种还要过一遍 parseDate 往返校验 */
+      if (CAL_DATE_RE.test(v) && fmt(parseDate(v)) === v) {
+        calView = parseDate(v);
+        calView.setDate(1);
+        setOverlay(null);
+        loadDate(v);
+        return;
+      }
+      input.classList.remove("is-bad");
+      void input.offsetWidth; /* 重新触发抖动动画 */
+      input.classList.add("is-bad");
+      input.select();
+    };
+    head.querySelector(".cal-jump-cancel").addEventListener("click", (ev) => { ev.stopPropagation(); restore(); });
+    input.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") submit();
+      else if (e.key === "Escape") restore();
+    });
+    input.addEventListener("input", () => {
+      /* 只留数字和连字符，输满就停下别炸 */
+      input.value = input.value.replace(/[^\d-]/g, "").slice(0, 10);
+    });
+    input.focus();
+    input.select();
   }
 
   function toggleCalendar() {
@@ -1228,6 +1327,18 @@
     appliedTheme = s.appearance.theme;
     appliedAccent = s.appearance.accent;
 
+    // 字体：界面字体默认跟随编辑区；编辑区字体默认 JetBrains Mono 那套
+    const uiFont = s.appearance.fontUI === "custom"
+      ? (s.appearance.fontUICustom || "").trim()
+      : FONT_UI_STACKS[s.appearance.fontUI] || FONT_UI_STACKS.editor;
+    if (uiFont) r.style.setProperty("--font-ui", uiFont);
+    else r.style.removeProperty("--font-ui");
+    const edFont = s.editor.font === "custom"
+      ? (s.editor.fontCustom || "").trim()
+      : FONT_ED_STACKS[s.editor.font] || FONT_ED_STACKS.jetbrains;
+    if (edFont) r.style.setProperty("--font-mono", edFont);
+    else r.style.removeProperty("--font-mono");
+
     r.style.setProperty("--blur", s.appearance.blur + "px");
     r.style.setProperty("--sidebar-w", s.appearance.sidebarWidth + "px");
     r.style.setProperty("--preview-w", s.appearance.previewWidth + "px");
@@ -1534,11 +1645,17 @@
     $("#setSideWVal").textContent = d.appearance.sidebarWidth + " px";
     $("#setPreviewW").value = d.appearance.previewWidth;
     $("#setPreviewWVal").textContent = d.appearance.previewWidth + " px";
+    setSeg("#setFontUI", d.appearance.fontUI);
+    $("#setFontUICustom").value = d.appearance.fontUICustom || "";
+    $("#setFontUICustomRow").hidden = d.appearance.fontUI !== "custom";
 
     $("#setFontSize").value = d.editor.fontSize;
     $("#setFontSizeVal").textContent = d.editor.fontSize + " px";
     $("#setLineHeight").value = d.editor.lineHeight;
     $("#setLineHeightVal").textContent = Number(d.editor.lineHeight).toFixed(2);
+    setSeg("#setFontEd", d.editor.font);
+    $("#setFontEdCustom").value = d.editor.fontCustom || "";
+    $("#setFontEdCustomRow").hidden = d.editor.font !== "custom";
     $("#setSplit").value = Math.round(d.appearance.splitRatio * 100);
     $("#setSplitVal").textContent = Math.round(d.appearance.splitRatio * 100) + " %";
     setSw("#setSyncScroll", d.appearance.syncScroll !== false);
@@ -1763,6 +1880,33 @@
   $("#setLineNumbers").addEventListener("click", () => {
     draft.editor.lineNumbers = !draft.editor.lineNumbers;
     setSw("#setLineNumbers", draft.editor.lineNumbers);
+    touch();
+  });
+
+  // ---- 字体 ----
+  $$("#setFontUI button").forEach((b) => b.addEventListener("click", () => {
+    if (draft.appearance.fontUI === b.dataset.v) return;
+    draft.appearance.fontUI = b.dataset.v;
+    setSeg("#setFontUI", b.dataset.v);
+    $("#setFontUICustomRow").hidden = b.dataset.v !== "custom";
+    if (b.dataset.v === "custom") $("#setFontUICustom").focus();
+    touch();
+  }));
+  $("#setFontUICustom").addEventListener("input", () => {
+    draft.appearance.fontUICustom = $("#setFontUICustom").value;
+    touch();
+  });
+
+  $$("#setFontEd button").forEach((b) => b.addEventListener("click", () => {
+    if (draft.editor.font === b.dataset.v) return;
+    draft.editor.font = b.dataset.v;
+    setSeg("#setFontEd", b.dataset.v);
+    $("#setFontEdCustomRow").hidden = b.dataset.v !== "custom";
+    if (b.dataset.v === "custom") $("#setFontEdCustom").focus();
+    touch();
+  }));
+  $("#setFontEdCustom").addEventListener("input", () => {
+    draft.editor.fontCustom = $("#setFontEdCustom").value;
     touch();
   });
 

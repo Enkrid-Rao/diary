@@ -342,6 +342,35 @@
           </section>
 
           <section class="set-card">
+            <h3 class="set-card-title">字体</h3>
+
+            <div class="set-row is-stack">
+              <div class="set-lab">
+                <span class="set-name">界面字体</span>
+                <span class="set-hint-line">侧栏、顶栏与面板用的字体，默认跟随编辑区</span>
+              </div>
+              <div class="set-ctl">
+                <div class="seg" id="setFontUI">
+                  <button data-v="editor">跟随编辑区</button>
+                  <button data-v="system">系统字体</button>
+                  <button data-v="wenkai">霞鹜文楷</button>
+                  <button data-v="custom">自定义…</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="set-row" id="setFontUICustomRow" hidden>
+              <div class="set-lab">
+                <span class="set-name">自定义界面字体</span>
+                <span class="set-hint-line">填本机已安装的字体名，可逗号分隔多个；前面的字体会先试</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setFontUICustom" class="txt-input" type="text" placeholder="例如 MiSans, LXGW WenKai" maxlength="200" spellcheck="false">
+              </div>
+            </div>
+          </section>
+
+          <section class="set-card">
             <h3 class="set-card-title">版式</h3>
 
             <div class="set-row">
@@ -391,6 +420,31 @@
               <div class="set-ctl">
                 <input id="setLineHeight" class="rng" type="range" min="1.4" max="2.6" step="0.05">
                 <span class="set-val" id="setLineHeightVal">1.85</span>
+              </div>
+            </div>
+
+            <div class="set-row is-stack">
+              <div class="set-lab">
+                <span class="set-name">编辑器字体</span>
+                <span class="set-hint-line">左侧编辑区（源码）用的字体，默认是 JetBrains Mono</span>
+              </div>
+              <div class="set-ctl">
+                <div class="seg" id="setFontEd">
+                  <button data-v="jetbrains">JetBrains Mono</button>
+                  <button data-v="system">系统等宽</button>
+                  <button data-v="wenkai">霞鹜文楷</button>
+                  <button data-v="custom">自定义…</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="set-row" id="setFontEdCustomRow" hidden>
+              <div class="set-lab">
+                <span class="set-name">自定义编辑器字体</span>
+                <span class="set-hint-line">填本机已安装的字体名，可逗号分隔多个；前面的字体会先试</span>
+              </div>
+              <div class="set-ctl">
+                <input id="setFontEdCustom" class="txt-input" type="text" placeholder="例如 JetBrains Mono, 霞鹜文楷" maxlength="200" spellcheck="false">
               </div>
             </div>
           </section>

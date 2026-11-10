@@ -105,6 +105,8 @@ DEFAULT_SETTINGS = {
         "previewWidth": 660,
         "splitRatio": 0.5,
         "syncScroll": True,          # 编辑区 ↔ 预览区 联动滚动
+        "fontUI": "editor",          # 界面字体：editor(=编辑区字体，默认) | system | wenkai | custom
+        "fontUICustom": "",          # 自定义界面字体（fontUI=custom 时生效）
     },
     "editor": {
         "fontSize": 14,
@@ -113,6 +115,11 @@ DEFAULT_SETTINGS = {
         "autoPairs": True,
         "continueList": True,
         "lineNumbers": False,
+        "font": "jetbrains",         # jetbrains(默认) | system | wenkai | custom
+        "fontCustom": "",            # 自定义编辑区字体（font=custom 时生效）
+    },
+    "ui": {
+        "collapsedMonths": [],       # 侧栏已折叠的月份分组（"YYYY-MM"）
     },
     "shortcuts": dict(DEFAULT_SHORTCUTS),
 }
@@ -122,6 +129,9 @@ _THEMES = ("ink", "graphite", "ocean")
 _ACCENTS = ("amber", "cyan", "violet", "rose")
 _TOPBARS = ("flat", "glass")
 _STARTUPS = ("today", "last")
+_FONT_UI = ("editor", "system", "wenkai", "custom")
+_FONT_ED = ("jetbrains", "system", "wenkai", "custom")
+_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 # 主题底色 → 原生标题栏 / 边框颜色（必须与 style.css 的 --ink 一致）
 _THEME_INK = {"ink": "#07080c", "graphite": "#0a0a0b", "ocean": "#050910"}
 
@@ -154,6 +164,13 @@ def _bool(v, default):
 
 def _choice(v, allowed, default):
     return v if v in allowed else default
+
+
+def _fontstr(v):
+    """自定义字体串：去危险字符，防 CSS 注入"""
+    if not isinstance(v, str):
+        return ""
+    return re.sub(r"[;{}<>\"']", "", v).strip()[:200]
 
 
 def sanitize(raw):
@@ -197,6 +214,8 @@ def sanitize(raw):
         s["appearance"]["previewWidth"] = _int(a.get("previewWidth"), 520, 980, 660)
         s["appearance"]["splitRatio"] = _float(a.get("splitRatio"), 0.2, 0.8, 0.5)
         s["appearance"]["syncScroll"] = _bool(a.get("syncScroll"), True)
+        s["appearance"]["fontUI"] = _choice(a.get("fontUI"), _FONT_UI, "editor")
+        s["appearance"]["fontUICustom"] = _fontstr(a.get("fontUICustom"))
 
     e = raw.get("editor") or {}
     if isinstance(e, dict):
@@ -206,6 +225,16 @@ def sanitize(raw):
         s["editor"]["autoPairs"] = _bool(e.get("autoPairs"), True)
         s["editor"]["continueList"] = _bool(e.get("continueList"), True)
         s["editor"]["lineNumbers"] = _bool(e.get("lineNumbers"), False)
+        s["editor"]["font"] = _choice(e.get("font"), _FONT_ED, "jetbrains")
+        s["editor"]["fontCustom"] = _fontstr(e.get("fontCustom"))
+
+    u = raw.get("ui") or {}
+    if isinstance(u, dict):
+        cm_ = u.get("collapsedMonths")
+        if isinstance(cm_, list):
+            s["ui"]["collapsedMonths"] = sorted(
+                {m for m in cm_ if isinstance(m, str) and _MONTH_RE.match(m)}
+            )[:200]
 
     sc = raw.get("shortcuts") or {}
     if isinstance(sc, dict):

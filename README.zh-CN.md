@@ -39,6 +39,11 @@
 技术上它就是一个 Python 单文件服务器加一坨原生 JS：**没有构建步骤、没有框架、没有 node_modules**。
 改 `static/style.css`、刷新，就完事。
 
+<p align="center">
+  <b><a href="https://github.com/Enkrid-Rao/diary/releases/latest">下载 Windows 版</a></b>
+  &nbsp;·&nbsp; 安装包（.exe）或绿色版（.zip），不需要装 Python
+</p>
+
 ## 功能
 
 **写作**
@@ -131,7 +136,16 @@
 
 ## 快速开始
 
-**环境** —— Windows 10/11（自带 WebView2 运行时）、Python 3.9+。
+**方式一：直接安装。** 不需要装 Python。下载最新的
+[`Diary-*-win64-setup.exe`](https://github.com/Enkrid-Rao/diary/releases/latest) 双击运行即可：
+只支持 Windows 10/11，现行系统自带 WebView2。日记写在 `文档\Diary`，设置写在 `%APPDATA%\Diary`，
+升级和卸载都不会动它们。安装向导默认装到 `C:\Program Files\Diary`，也可以选「只为我安装」，
+那样会落到 `%LOCALAPPDATA%\Programs\Diary`。
+
+**方式二：绿色版。** 下载 `.zip`，解压到任意目录，双击 `Diary.exe`。日记就在 exe 旁边，
+整个文件夹可以扔进 U 盘带走。
+
+**方式三：从源码运行。** Windows 10/11（自带 WebView2 运行时）、Python 3.9+。
 
 ```bash
 git clone https://github.com/Enkrid-Rao/diary.git
@@ -143,10 +157,8 @@ python app.py
 首次启动会在 `app.py` 同级创建 `diaries/` 与 `settings.json`。想把日记放别处，去
 **设置 → 常规 → 日记目录** 改。
 
-> 想要一个没有控制台的单窗口，外加开始菜单快捷方式？`Diary.py` 是个很薄的启动器
-> （从 exe 所在目录加载 `app.py`，这样代码仍然可改），`gen_shortcut.py` 负责创建快捷方式。
-> 打包成 `Diary.exe` 是可选的 —— `pyinstaller --noconsole --onefile Diary.py`。
-> 本版本只发布源码。
+> **自己打包：** `python build_release.py` 用 PyInstaller 出绿色版目录与 zip；`installer.iss` 用
+> Inno Setup 6 编译安装包；`Diary.py` 仍是最薄的启动器，用来在可编辑的源码上跑一个 exe。
 
 ## 快捷键
 

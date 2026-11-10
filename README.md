@@ -40,6 +40,11 @@ for the one thing you actually do — write a little, every day, and sometimes w
 It is a single-file Python server plus a vanilla-JS front end. No build step, no framework, no
 `node_modules`. Edit `static/style.css`, hit refresh, done.
 
+<p align="center">
+  <b><a href="https://github.com/Enkrid-Rao/diary/releases/latest">Download for Windows</a></b>
+  &nbsp;·&nbsp; installer (.exe) or portable (.zip) — no Python needed
+</p>
+
 ## Features
 
 **Writing**
@@ -138,7 +143,16 @@ It is a single-file Python server plus a vanilla-JS front end. No build step, no
 
 ## Quick start
 
-**Requirements** — Windows 10/11 with the WebView2 runtime (preinstalled on current Windows), Python 3.9+.
+**Option 1 — install it.** No Python needed. Grab the latest
+[`Diary-*-win64-setup.exe`](https://github.com/Enkrid-Rao/diary/releases/latest) and run it: Windows
+10/11 only, WebView2 is already there on current builds. Entries go to `Documents\Diary`, settings to
+`%APPDATA%\Diary`, and both survive upgrades and uninstalls. The installer drops the program into
+`C:\Program Files\Diary` (or `%LOCALAPPDATA%\Programs\Diary` if you pick "install for me only").
+
+**Option 2 — portable.** Download the `.zip`, unpack it anywhere, run `Diary.exe`. Entries stay next
+to the exe, so the whole folder can live on a USB stick.
+
+**Option 3 — run from source.** Windows 10/11 with the WebView2 runtime, Python 3.9+.
 
 ```bash
 git clone https://github.com/Enkrid-Rao/diary.git
@@ -147,13 +161,12 @@ pip install -r requirements.txt
 python app.py
 ```
 
-On first launch the app creates `diaries/` and `settings.json` next to `app.py`. Point the diary
-folder somewhere else from **Settings → General** if you prefer.
+On first launch from source the app creates `diaries/` and `settings.json` next to `app.py`. Point the
+diary folder somewhere else from **Settings → General** if you prefer.
 
-> Want a single window with no console, plus a Start-menu shortcut? `Diary.py` is a thin launcher
-> (loads `app.py` from the exe's folder so the code stays editable) and `gen_shortcut.py` creates the
-> shortcut. Packaging into `Diary.exe` is optional — `pyinstaller --noconsole --onefile Diary.py`.
-> This release ships source only.
+> **Building the packages yourself:** `python build_release.py` produces the portable folder and zip
+> (PyInstaller), `installer.iss` compiles the installer with Inno Setup 6, and `Diary.py` stays as the
+> thin launcher for running an unpacked copy against editable source.
 
 ## Keyboard shortcuts
 

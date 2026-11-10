@@ -43,8 +43,25 @@ if getattr(sys, "frozen", False):
     sys.stderr = sys.stdout
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-DEFAULT_DIARY_DIR = os.path.join(BASE_DIR, "diaries")
+
+# 打包版把静态资源塞进了 exe，运行时解到 sys._MEIPASS；源码运行时就是项目目录
+RES_DIR = getattr(sys, "_MEIPASS", BASE_DIR)
+
+# 数据放哪：源码运行照旧放在程序旁边；打包版默认进用户目录，避免装在
+# Program Files 时写不进去。想要绿色版（数据随身带）就在 exe 旁放一个
+# portable.txt，程序会改用 exe 同目录。
+_FROZEN = getattr(sys, "frozen", False)
+if _FROZEN and not os.path.exists(os.path.join(BASE_DIR, "portable.txt")):
+    DATA_DIR = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "Diary")
+    DEFAULT_DIARY_DIR = os.path.join(os.path.expanduser("~"), "Documents", "Diary")
+else:
+    DATA_DIR = BASE_DIR
+    DEFAULT_DIARY_DIR = os.path.join(BASE_DIR, "diaries")
+
+STATIC_DIR = os.path.join(RES_DIR, "static")
+# WebView2 的配置/缓存目录。装在 Program Files 时程序目录只读，
+# 所以打包版必须放到用户可写的 DATA_DIR 下。
+WEBVIEW_DIR = os.path.join(DATA_DIR, ".webview-data")
 PORT = 17823
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -62,7 +79,7 @@ MIME = {
 }
 
 # ============ 设置 ============
-SETTINGS_PATH = os.path.join(BASE_DIR, "settings.json")
+SETTINGS_PATH = os.path.join(DATA_DIR, "settings.json")
 
 DEFAULT_SHORTCUTS = {
     "save": "Ctrl-S",
@@ -262,6 +279,7 @@ def save_settings(raw):
     """原子写入，返回落盘后的最终设置"""
     s = sanitize(raw)
     with _settings_lock:
+        os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
         tmp = SETTINGS_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8", newline="\n") as f:
             json.dump(s, f, ensure_ascii=False, indent=2)
@@ -899,11 +917,10 @@ def open_window_native():
     _mark("before webview.start")
     try:
         webview.start(private_mode=False, js_api=Api(),
-                      storage_path=os.path.join(BASE_DIR, ".webview-data"))
+                      storage_path=WEBVIEW_DIR)
     except TypeError:
         # 老版本 pywebview 不认 js_api 关键字
-        webview.start(private_mode=False,
-                      storage_path=os.path.join(BASE_DIR, ".webview-data"))
+        webview.start(private_mode=False, storage_path=WEBVIEW_DIR)
     _mark("webview.start returned")
 
 

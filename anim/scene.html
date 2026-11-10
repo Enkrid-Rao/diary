@@ -197,6 +197,7 @@
   .tok-math { color: #b9a6de; }
   .tok-code { color: #8fd4e0; }
   .tok-mute { color: #6b7288; }
+  .tok-quote { color: #9aa3ba; font-style: italic; }
   .caret {
     display: inline-block; width: 2px; height: 18px; vertical-align: -3px;
     background: var(--accent); margin-left: 1px;
@@ -239,6 +240,12 @@
     background: linear-gradient(90deg, rgba(var(--accent-rgb), .07), transparent 70%);
     border-radius: 0 10px 10px 0;
     padding: 10px 14px 10px 14px;
+  }
+  .pv .quote {
+    font-size: 13px; line-height: 1.9; color: #9aa3ba; font-style: italic;
+    letter-spacing: .3px; margin-bottom: 14px;
+    border-left: 2px solid rgba(var(--accent-rgb), .5);
+    padding: 2px 0 2px 12px;
   }
 
   /* ---------- 字幕 ---------- */
@@ -312,7 +319,7 @@
       <header class="topbar">
         <div class="tb-date"><b>11 月 10 日</b><span>2026 · 周二 · 今天</span></div>
         <div class="tb-today">回到今天</div>
-        <div class="tb-right"><span class="tb-count">292 字</span><i class="tb-dot"></i></div>
+        <div class="tb-right"><span class="tb-count">292 字</span><i class="tb-dot" id="tbDot"></i><span class="tb-txt" id="tbSaved">已保存</span></div>
       </header>
 
       <div class="body">
@@ -345,6 +352,7 @@
           <p id="pvP2"></p>
           <div class="formula" id="pvF"><div class="sweep" id="pvSweep"></div><span id="pvMath"></span></div>
           <div class="tip" id="pvTip"></div>
+          <div class="quote" id="pvQuote"></div>
         </div>
       </section>
       </div>
@@ -354,6 +362,8 @@
       <span id="cap1">一天一页 Markdown</span>
       <span id="cap2">LaTeX <em>边打边渲染</em></span>
       <span id="cap3">全文搜索 <em>Ctrl+F</em></span>
+      <span id="cap4">深色 <em>·</em> 浅色 · 两套主题</span>
+      <span id="cap5">100% 本地 · <em>数据归你</em></span>
     </div>
 
     <div class="hero">
@@ -397,9 +407,11 @@
     ed: $("ed"),
     pvH: $("pvH"), pvP1: $("pvP1"), pvP2: $("pvP2"),
     pvF: $("pvF"), pvSweep: $("pvSweep"), pvMath: $("pvMath"), pvTip: $("pvTip"),
+    pvQuote: $("pvQuote"), tbDot: $("tbDot"), tbSaved: $("tbSaved"),
     hero: document.querySelector(".hero"),
     heroTitle: $("heroTitle"), heroSub: $("heroSub"), heroRule: $("heroRule"),
     cap1: $("cap1"), cap2: $("cap2"), cap3: $("cap3"),
+    cap4: $("cap4"), cap5: $("cap5"),
     outro: document.querySelector(".outro"), outroMark: $("outroMark"),
     outroTitle: $("outroTitle"), outroSlogan: $("outroSlogan"), outroLink: $("outroLink"),
     entries: Array.prototype.slice.call(document.querySelectorAll(".entry")),
@@ -418,6 +430,7 @@
     { text: "$$", cls: "tok-math" },
     { text: "" },
     { text: "步长减半，误差也减半。" },
+    { text: "> 记住：下限先兜，上限后兜。", cls: "tok-quote" },
   ];
   const FULL = SRC.map((l) => l.text).join("\n");
   // 每行结束时的全局字符下标，用来驱动预览的逐块出现
@@ -450,21 +463,24 @@
   }
 
   /* ---------- 关键时间点 ---------- */
+  /* 加长版：总 34.4s。原则——开场留白给呼吸，打字放慢一倍，
+     每条字幕至少停 1.6s，收尾给足 2.2s。 */
   const T = {
-    heroIn: 0.1, heroSub: 0.72, heroRule: 1.0,
-    heroOut: 1.6,
-    winIn: 1.85, winInEnd: 2.95,
-    sheen: 2.6, sheenEnd: 3.9,
-    sideStart: 2.95, sideStep: 0.13,
-    typeStart: 3.3, typeEnd: 7.1,
-    mathIn: 7.35, mathEnd: 8.5, sweep: 8.35, sweepEnd: 9.3,
-    cap1: 8.9, cap2: 10.7, cap3: 12.4, capEnd: 14.1,
-    pushIn: 11.6, pushEnd: 14.6,
-    winOut: 14.15, winOutEnd: 15.05,
-    outroIn: 14.7, outroEnd: 16.4,
+    heroIn: 0.25, heroSub: 1.5, heroRule: 2.5,      // 开场 0–3.7s：标题慢慢立起来
+    heroOut: 3.2,
+    winIn: 3.8, winInEnd: 6.2,                       // 窗口 3.8–6.2s 浮现
+    sheen: 5.3, sheenEnd: 6.9,
+    sideStart: 6.3, sideStep: 0.32,                  // 侧栏 6.3–9.5s 逐条落位
+    typeStart: 10.6, typeEnd: 19.2,                  // 打字 8.6s，约 19 字/秒
+    savedIn: 19.35,                                  // 打完 0.15s 后亮「已保存」
+    mathIn: 19.6, mathEnd: 21.6, sweep: 21.1, sweepEnd: 22.5,
+    cap1: 22.2, cap2: 24.4, cap3: 26.6, cap4: 28.8, cap5: 30.8, capEnd: 32.4,
+    pushIn: 25.0, pushEnd: 32.2,
+    winOut: 32.4, winOutEnd: 33.6,
+    outroIn: 33.2, outroEnd: 34.2,
   };
 
-  const DURATION = 17.0;
+  const DURATION = 34.4;
 
   /* ---------- 主时间轴 ---------- */
   function seek(t) {
@@ -564,10 +580,21 @@
     el.pvSweep.style.width = (sw * 78).toFixed(1) + "%";
     el.pvSweep.style.opacity = (sw > 0 && sw < 1 ? 1 : sw >= 1 ? 0 : 0).toFixed(2);
 
-    const t6 = chars >= lineEnd[SRC.length - 1] ? 1 : 0;
+    const t6 = chars >= lineEnd[9] ? 1 : 0;
     el.pvTip.textContent = t6 ? "步长减半，误差也减半。" : "";
     el.pvTip.style.opacity = t6;
     el.pvTip.style.transform = "translateY(" + lerp(8, 0, t6) + "px)";
+    const t7 = chars >= lineEnd[10] ? 1 : 0;
+    el.pvQuote.textContent = t7 ? "记住：下限先兜，上限后兜。" : "";
+    el.pvQuote.style.opacity = t7;
+    el.pvQuote.style.transform = "translateY(" + lerp(8, 0, t7) + "px)";
+
+    /* 打完之后，顶栏亮起「已保存」：绿点轻轻脉一下，文字跟着淡入 */
+    const saved = at(t, T.savedIn, T.savedIn + 0.9, easeOut);
+    el.tbDot.style.opacity = saved.toFixed(3);
+    el.tbDot.style.transform =
+      "scale(" + (1 + Math.max(0, Math.sin((t - T.savedIn) * 3.2)) * 0.22 * saved).toFixed(3) + ")";
+    el.tbSaved.style.opacity = (saved * 0.92).toFixed(3);
 
     /* 字幕：三条依次交叉淡入淡出 */
     const capP = (a, b) => {
@@ -575,15 +602,14 @@
       const outP = at(t, b - 0.45, b, easeIn);
       return clamp01(inP - outP);
     };
-    const c1 = capP(T.cap1, T.cap2);
-    const c2 = capP(T.cap2, T.cap3);
-    const c3 = capP(T.cap3, T.capEnd);
-    el.cap1.style.opacity = c1.toFixed(3);
-    el.cap1.style.transform = "translateY(" + lerp(14, 0, c1).toFixed(2) + "px)";
-    el.cap2.style.opacity = c2.toFixed(3);
-    el.cap2.style.transform = "translateY(" + lerp(14, 0, c2).toFixed(2) + "px)";
-    el.cap3.style.opacity = c3.toFixed(3);
-    el.cap3.style.transform = "translateY(" + lerp(14, 0, c3).toFixed(2) + "px)";
+    const caps = [T.cap1, T.cap2, T.cap3, T.cap4, T.cap5];
+    caps.forEach((start, idx) => {
+      const end = idx + 1 < caps.length ? caps[idx + 1] : T.capEnd;
+      const k = capP(start, end);
+      const c = el["cap" + (idx + 1)];
+      c.style.opacity = k.toFixed(3);
+      c.style.transform = "translateY(" + lerp(14, 0, k).toFixed(2) + "px)";
+    });
 
     /* 收尾 */
     const oIn = at(t, T.outroIn + 0.25, T.outroIn + 1.35, easeOutQuint);

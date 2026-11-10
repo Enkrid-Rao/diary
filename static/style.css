@@ -672,17 +672,54 @@ body.topbar-glass #topbar::after { display: none; }
 }
 #preview { max-width: var(--preview-w); margin: 0 auto; padding: 34px 36px 80px; }
 
+/* 空态：把图标放进一层玻璃圆盘，加上强调色晕与极缓的浮动；
+   文案两侧用渐隐细线夹住。层次从"一枚图标 + 一行字"变成"底座 → 图标 → 文案"。 */
 .preview-empty {
   position: absolute; inset: 0;
   display: none;
   flex-direction: column;
-  align-items: center; justify-content: center; gap: 18px;
-  color: var(--faint); font-size: var(--fs-sm); letter-spacing: 2.5px;
+  align-items: center; justify-content: center; gap: 30px;
+  color: var(--faint); font-size: var(--fs-sm); letter-spacing: 3px;
   pointer-events: none;
   animation: fadeUp var(--dur-4) var(--ease-out) both;
 }
-.preview-empty svg { width: 92px; height: 92px; opacity: 0.6; color: var(--faint); }
-.preview-empty svg .accent-stroke { stroke: rgba(var(--accent-rgb), 0.55); }
+.preview-empty svg {
+  width: 84px; height: 84px;
+  padding: 22px;
+  box-sizing: content-box;
+  border-radius: 50%;
+  color: #a3a9bf;
+  background:
+    radial-gradient(60% 60% at 50% 38%, rgba(var(--accent-rgb), 0.14), transparent 72%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.015));
+  border: 1px solid var(--line-2);
+  box-shadow:
+    0 22px 50px rgba(0, 0, 0, 0.46),
+    0 0 64px rgba(var(--accent-rgb), 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  animation: emptyFloat 7.5s var(--ease) infinite alternate;
+}
+@keyframes emptyFloat {
+  from { transform: translateY(-3px); }
+  to   { transform: translateY(4px); }
+}
+.preview-empty svg .accent-stroke { stroke: rgba(var(--accent-rgb), 0.65); }
+.preview-empty span { position: relative; padding: 0 42px; color: #8b92a9; }
+.preview-empty span::before,
+.preview-empty span::after {
+  content: "";
+  position: absolute; top: 50%;
+  width: 30px; height: 1px;
+}
+.preview-empty span::before {
+  left: 0;
+  background: linear-gradient(90deg, transparent, var(--line-2));
+}
+.preview-empty span::after {
+  right: 0;
+  background: linear-gradient(270deg, transparent, var(--line-2));
+}
 #previewPane.is-empty .preview-empty { display: flex; }
 #previewPane.is-empty #preview { display: none; }
 
@@ -1302,41 +1339,68 @@ body[data-overlay="settings"] .set-dialog {
 }
 
 /* 开关 */
+/* 开关：iOS 式。滑片走 transform（合成层，不触发重排）；
+   按下时滑片横向拉长并贴边，松手回弹——这是"灵动"的关键，整块缩放反而廉价。 */
 .sw {
+  --sw-w: 44px;
+  --sw-h: 26px;
+  --sw-gap: 3px;
+  --sw-knob: 18px;
   position: relative;
-  width: 42px; height: 23px;
-  flex: none;
+  width: var(--sw-w); height: var(--sw-h);
+  flex: none; padding: 0;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.055);
   border: 1px solid var(--line-2);
   cursor: pointer;
-  transition: background var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease), transform var(--dur-1) var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    inset 0 1px 2.5px rgba(0, 0, 0, 0.5),
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    background var(--dur-2) var(--ease),
+    border-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease);
 }
 .sw::after {
   content: "";
   position: absolute;
-  top: 50%; left: 3px;
-  width: 15px; height: 15px;
-  transform: translateY(-50%);
+  top: 50%; left: var(--sw-gap);
+  width: var(--sw-knob); height: var(--sw-knob);
   border-radius: 50%;
-  background: #8b90a3;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transform: translate3d(0, -50%, 0);
+  background: linear-gradient(180deg, #ffffff 0%, #d9dbe4 100%);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 3px 8px rgba(0, 0, 0, 0.26);
+  will-change: transform;
   transition:
-    left var(--dur-3) var(--ease-spring),
-    background var(--dur-2) var(--ease),
-    box-shadow var(--dur-2) var(--ease);
+    transform var(--dur-3) var(--ease-spring),
+    width var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    background var(--dur-2) var(--ease);
 }
-.sw:hover::after { background: #a5aabc; }
-.sw:active { transform: scale(var(--press-2)); transition-duration: var(--dur-0); }
+.sw:hover { background: rgba(255, 255, 255, 0.09); border-color: var(--line-3); }
+.sw:hover::after { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.32); }
+.sw:active::after { width: 22px; }
+.sw:focus-visible { outline: 2px solid rgba(var(--accent-rgb), 0.65); outline-offset: 2px; }
+
 .sw[aria-checked="true"] {
-  background: rgba(var(--accent-rgb), 0.26);
-  border-color: rgba(var(--accent-rgb), 0.42);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.98), rgba(var(--accent-rgb), 0.74));
+  border-color: rgba(var(--accent-rgb), 0.58);
+  box-shadow:
+    0 3px 12px rgba(var(--accent-rgb), 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
 }
-.sw[aria-checked="true"]::after {
-  left: 22px;
-  background: var(--accent);
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);
+.sw[aria-checked="true"]:hover {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 1), rgba(var(--accent-rgb), 0.85));
+  box-shadow:
+    0 4px 16px rgba(var(--accent-rgb), 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
+.sw[aria-checked="true"]::after { transform: translate3d(18px, -50%, 0); }
+.sw[aria-checked="true"]:active::after { transform: translate3d(14px, -50%, 0); }
 
 /* 主题卡片 */
 .theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
@@ -1631,4 +1695,156 @@ body.no-motion::before { animation: none !important; }
   border-top: 1px solid var(--line-1);
   font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--faint);
   letter-spacing: 0.02em;
+}
+
+/* ============ 16. 交互质感（Apple 式反馈） ====================================
+   全部是覆盖式规则：不改类名、不改 DOM、不改任何事件绑定，只调整过渡曲线与
+   位移/阴影。原则三条：
+     · 悬停抬起 1px、按下压回——手指能"摸到"控件
+     · 颜色走 --dur-1，位移走 --ease-spring，光晕走 --dur-2，三者错开才有层次
+     · 键盘焦点只在键盘导航时出现（:focus-visible），鼠标点击不闪边框
+   ========================================================================== */
+
+.icon-btn:focus-visible,
+.pill-btn:focus-visible,
+.ghost-btn:focus-visible,
+.set-tab:focus-visible,
+.set-close:focus-visible,
+.cal-day:focus-visible,
+.entry-item:focus-visible,
+.theme-card:focus-visible,
+.accent-dot:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.6);
+  outline-offset: 2px;
+}
+
+/* 图标按钮：抬起 1px + 顶部内高光 + 落影，按下压回原高度 */
+.icon-btn {
+  transition:
+    background var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease-spring);
+}
+.icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 6px 16px rgba(0, 0, 0, 0.26);
+}
+.icon-btn:active { transform: translateY(0) scale(var(--press-1)); transition-duration: var(--dur-0); }
+.icon-btn.is-open:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 18px rgba(var(--accent-rgb), 0.2);
+}
+
+/* 主按钮（回到今天）：光晕随悬停亮起，按下回落 */
+.pill-btn { will-change: transform; }
+.pill-btn:hover { transform: translateY(-1px); }
+.pill-btn:active {
+  transform: translateY(0) scale(var(--press-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition-duration: var(--dur-0);
+}
+
+/* 幽灵按钮 / 输入框：统一悬停抬升 */
+.ghost-btn {
+  transition:
+    background var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease),
+    color var(--dur-1) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease-spring);
+}
+.ghost-btn:hover { transform: translateY(-1px); }
+.ghost-btn:active { transform: translateY(0) scale(var(--press-2)); transition-duration: var(--dur-0); }
+
+/* 设置卡片：悬停轻微抬起并收一圈光，避免整页死板 */
+.set-card {
+  transition:
+    border-color var(--dur-2) var(--ease),
+    background var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease-out);
+}
+.set-card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+/* 左侧标签：悬停时图标轻微前移，指示"这一栏可点" */
+.set-tab svg { transition: transform var(--dur-2) var(--ease-spring), opacity var(--dur-2) var(--ease); }
+.set-tab:hover svg { transform: translateX(1.5px); }
+
+/* 关闭按钮：悬停旋转 90°，是 Apple 弹层里最常见的一个小动作 */
+.set-close svg { transition: transform var(--dur-2) var(--ease-spring); }
+.set-close:hover svg { transform: rotate(90deg); }
+
+/* 日期块：整块可点，按下给一点回弹 */
+.date-block { transition: transform var(--dur-2) var(--ease-spring); }
+.date-block:active { transform: scale(0.985); transition-duration: var(--dur-0); }
+
+/* 日历：选中日浮起，今天加一圈呼吸光环 */
+.cal-day.selected { transform: translateY(-1px); }
+.cal-day.today:not(.selected) { box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.09); }
+.cal-day:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24); }
+
+/* 分栏把手：默认只有一条线，悬停时浮出光带，提示可拖 */
+#divider:hover,
+#divider.is-drag { box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.18), 0 0 18px rgba(var(--accent-rgb), 0.12); }
+
+/* ---- 初始页面：把"两片空白"变成有引导的层次 ---- */
+
+/* 侧栏空态：一枚极淡的日历图标压在上方，首行（"还没有日记"）放大提亮，
+   副行保持灰；两行之间靠行高拉开。::first-line 能改字色字号，不用动 DOM。 */
+.list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 58px;
+  color: #6d7490;
+  font-size: var(--fs-sm);
+  line-height: 2.1;
+  letter-spacing: 1.6px;
+}
+.list-empty::before {
+  content: "";
+  width: 46px; height: 46px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2380879f' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='15' rx='3'/%3E%3Cpath d='M8 3v3M16 3v3M3.5 10h17'/%3E%3Cpath d='M9 14.5h6' stroke-dasharray='1 2.4'/%3E%3C/svg%3E");
+  background-size: 22px 22px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line-1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.list-empty::first-line {
+  font-size: var(--fs-md);
+  color: #b9bfd2;
+  letter-spacing: 1.2px;
+}
+
+/* 编辑区占位符：从"系统提示"变成"引导语"——更大、更亮、字距更稳 */
+.cm-s-dracula .CodeMirror-placeholder {
+  color: #5c6379 !important;
+  font-size: 15px;
+  letter-spacing: 0.6px;
+}
+
+/* 预览空态收紧一点，别把图标和文案推得太散 */
+.preview-empty { gap: 24px; }
+.preview-empty svg { width: 76px; height: 76px; padding: 20px; }
+.preview-empty span { color: #8f96ad; }
+
+/* 工作区两栏：顶部一层极淡的向下渐隐，托住内容，避免大面积死平 */
+#editorPane,
+#previewPane {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.016), rgba(255, 255, 255, 0) 160px);
 }

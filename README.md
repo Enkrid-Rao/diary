@@ -1,10 +1,21 @@
 # Diary
 
-> A local-first Markdown diary with live LaTeX, a hand-drawn glass calendar and two finely tuned themes.
-> No account, no cloud, no telemetry — your entries stay as plain `.md` files on your disk.
+**本地优先的 Markdown 日记**：实时 LaTeX、全文搜索、玻璃日历、深 / 浅两套主题。
+*Local-first Markdown diary with live LaTeX, full-text search and a hand-drawn glass calendar.*
+
+No account, no cloud, no telemetry — your entries stay as plain `.md` files on your disk.
 
 <p align="center">
-  <img src="docs/01-main-flat.png" width="880" alt="Diary — main window (dark)">
+  <a href="https://github.com/Enkrid-Rao/diary/releases"><img src="https://img.shields.io/github/v/release/Enkrid-Rao/diary?style=flat-square&color=e8a244&label=release" alt="Latest release"></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-4a5568?style=flat-square" alt="Platform"></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/python-3.9%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
+  <a href="https://github.com/Enkrid-Rao/diary/stargazers"><img src="https://img.shields.io/github/stars/Enkrid-Rao/diary?style=flat-square&color=e8a244" alt="Stars"></a>
+  <a href="#中文说明"><img src="https://img.shields.io/badge/README-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-e8a244?style=flat-square" alt="简体中文"></a>
+  <a href="#diary"><img src="https://img.shields.io/badge/README-English-23252d?style=flat-square" alt="English"></a>
+</p>
+
+<p align="center">
+  <a href="docs/01-main-flat.png"><img src="docs/01-main-flat.png" width="900" alt="Diary — main window (dark)"></a>
 </p>
 
 <p align="center">
@@ -59,25 +70,60 @@ It is a single-file Python server plus a vanilla-JS front end. No build step, no
 
 ## Screenshots
 
-| Dark — main window | Light — main window |
-| --- | --- |
-| ![dark](docs/01-main-flat.png) | ![light](docs/11-light-main.png) |
+> Click any picture to open it full size. 点任意图片可放大查看；更多见 [`docs/`](docs)。
 
-| Settings (dark) | Settings (light) |
-| --- | --- |
-| ![settings dark](docs/03-settings-appearance.png) | ![settings light](docs/12-light-settings.png) |
-
-| Full-text search | Custom calendar |
-| --- | --- |
-| ![search](docs/10-search.png) | ![calendar](docs/14-light-calendar.png) |
-
-| LaTeX autocomplete | Empty state |
-| --- | --- |
-| ![latex](docs/07-latex-hint.png) | ![empty](docs/09-empty-state.png) |
-
-| Ocean theme | Editor settings |
-| --- | --- |
-| ![ocean](docs/06-ocean-glass.png) | ![editor](docs/04-settings-editor.png) |
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/01-main-flat.png"><img src="docs/01-main-flat.png" alt="Editor and live preview — dark theme"></a><br>
+      <sub><b>Dark · Ink</b> — 编辑器与实时预览 · 深色 · 墨夜</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/11-light-main.png"><img src="docs/11-light-main.png" alt="Editor and live preview — light theme"></a><br>
+      <sub><b>Light · Ink</b> — 同一页的浅色纸 · 浅色 · 墨夜</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/10-search.png"><img src="docs/10-search.png" alt="Full-text search — dark theme"></a><br>
+      <sub><b>Full-text search</b> — 日期 + 小标题 + 命中句（深色）</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/13-light-search.png"><img src="docs/13-light-search.png" alt="Full-text search — light theme"></a><br>
+      <sub><b>Full-text search</b> — 命中词是荧光笔块（浅色）</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/03-settings-appearance.png"><img src="docs/03-settings-appearance.png" alt="Appearance settings — dark theme"></a><br>
+      <sub><b>Settings · Appearance</b> — 三张纸 × 四支强调色（深色）</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/12-light-settings.png"><img src="docs/12-light-settings.png" alt="Appearance settings — light theme"></a><br>
+      <sub><b>Settings · Appearance</b> — 栏 / 页 / 卡片三级阶梯（浅色）</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/14-light-calendar.png"><img src="docs/14-light-calendar.png" alt="Calendar popover"></a><br>
+      <sub><b>Calendar</b> — 自绘玻璃日历，有记录的日期带点</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/07-latex-hint.png"><img src="docs/07-latex-hint.png" alt="LaTeX autocomplete"></a><br>
+      <sub><b>LaTeX autocomplete</b> — 每一行左边都是真实的 KaTeX 渲染</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/06-ocean-glass.png"><img src="docs/06-ocean-glass.png" alt="Ocean theme"></a><br>
+      <sub><b>Ocean</b> — 深海底色，偏冷的第三张纸</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/09-empty-state.png"><img src="docs/09-empty-state.png" alt="Empty state"></a><br>
+      <sub><b>Empty state</b> — 还没写东西时的那一页</sub>
+    </td>
+  </tr>
+</table>
 
 ## Quick start
 
@@ -145,6 +191,8 @@ No license file yet — if you plan to reuse the code, open an issue and I'll ad
 ---
 
 # 中文说明
+
+<p align="right"><a href="#diary"><img src="https://img.shields.io/badge/English-%E2%86%91-23252d?style=flat-square" alt="Back to English"></a></p>
 
 > 本地优先的 Markdown 日记：实时 LaTeX、自绘玻璃日历、深色与浅色两套主题。
 > 不要账号、不走云端、没有遥测——每一篇日记就是一个 `.md` 文件，躺在你自己的硬盘上。

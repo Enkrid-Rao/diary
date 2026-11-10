@@ -10,10 +10,11 @@
   5. 把音轨无损挂到 mp4 上（视频流直接 copy，不重编码）
 
 用法：
-  python audio.py probe     # 只合成各句，打印实测时长，检查是否放得下
-  python audio.py build     # 全套：旁白 + 配乐 + 混音 + 挂轨
+  python audio.py build           # 纯音乐版（默认）：合成配乐 + 挂轨
+  python audio.py build --voice   # 加上旁白：合成语音 + 配乐 + 混音
+  python audio.py probe           # 只合成各句并打印实测时长，检查是否放得下
 
-依赖：edge-tts、numpy、scipy、imageio-ffmpeg（后三个通常已有）。
+依赖：numpy、scipy、imageio-ffmpeg；要旁白另需 edge-tts。
 中间文件写在 voice/ 与 build/，都可随时删掉重跑。
 """
 
@@ -140,15 +141,15 @@ def midi(m):
     return 440.0 * 2 ** ((m - 69) / 12.0)
 
 
-def pad_note(f, dur, amp, phase=0.0, detune=0.0):
-    """一支"弦乐"声部：基频 + 六个谐波，慢颤音，余弦包络进出。"""
+def pad_note(f, dur, amp, phase=0.0, detune=0.0, h0=1, h1=6, tilt=1.8):
+    """一支"弦乐"声部：基频 + 若干谐波，慢颤音，余弦包络进出。"""
     n = int(dur * SR)
     t = np.arange(n) / SR
     vib = 1.0 + 0.0016 * np.sin(2 * np.pi * 0.11 * t + phase)
     ph = 2 * np.pi * np.cumsum(f * (1 + detune) * vib) / SR
     sig = np.zeros(n)
-    for h in range(1, 7):
-        sig += np.sin(ph * h + phase * h) / h ** 1.8
+    for h in range(h0, h1 + 1):
+        sig += np.sin(ph * h + phase * h) / h ** tilt
     fi = 2.1
     fo = 2.6
     env = np.ones(n)
@@ -170,11 +171,19 @@ def pluck(f, dur, amp):
 
 
 def make_music(dur=DURATION):
+    """一段 34 秒的环境铺底：四段和弦、层叠的亮度、稀疏的点音。
+
+    没有旁白时音乐要自己撑住全片，所以比"垫在人声下面"的版本多了两层：
+    一层随段落慢慢打开的高频泛音，一层按画面起伏的整体音量曲线。
+    """
     n = int(dur * SR)
+    t = np.arange(n) / SR
     L = np.zeros(n)
     R = np.zeros(n)
+    Lb = np.zeros(n)   # 高频泛音层
+    Rb = np.zeros(n)
 
-    # Am9 → Fmaj7 → Cmaj7 → G6/9，四段等长、相邻交叠 2.2 秒
+    # Am9 → Fmaj7 → Cmaj7 → G6/9，四段、相邻交叠 2.2 秒
     chords = [
         [45, 52, 60, 59],
         [41, 48, 57, 64],
@@ -186,54 +195,71 @@ def make_music(dur=DURATION):
         span = b - a
         for vi, m in enumerate(chord):
             amp = 0.20 / (1 + 0.35 * vi)
-            # 左声道比右声道低 3 音分，拉开一点宽度
+            # 左右各偏 1.6 音分，拉开一点宽度
             seg = pad_note(midi(m), span, amp, phase=ci * 1.7 + vi * 0.9, detune=-0.0016)
             i0 = int(a * SR)
             L[i0:i0 + len(seg)] += seg
             seg = pad_note(midi(m), span, amp, phase=ci * 2.3 + vi * 1.1, detune=+0.0016)
             R[i0:i0 + len(seg)] += seg
-        # 低八度铺底
+
+            # 同一组音的高八度泛音，音量随时间打开（8s 起、24s 满、32s 收）
+            top = pad_note(midi(m + 12), span, amp * 0.5, phase=ci * 0.8 + vi * 1.4,
+                           detune=-0.0012, h0=3, h1=5, tilt=2.2)
+            Lb[i0:i0 + len(top)] += top
+            Rb[i0:i0 + len(top)] += top * 0.92
+
         sub = pad_note(midi(chord[0] - 12), span, 0.11, phase=ci * 0.6)
         i0 = int(a * SR)
         L[i0:i0 + len(sub)] += sub * 0.6
         R[i0:i0 + len(sub)] += sub * 0.6
 
-    # 稀疏的钢琴点音，落在每段和弦的音上
-    notes = [
-        (1.30, 76), (4.10, 72), (7.90, 76), (11.60, 72),
-        (15.90, 79), (19.40, 76), (23.10, 79), (26.40, 76),
-        (29.80, 72), (32.60, 76),
+    bright = np.interp(t, [0, 9, 16, 24, 30, dur], [0.0, 0.25, 0.55, 1.0, 0.7, 0.2])
+    L += Lb * bright
+    R += Rb * bright
+
+    # 点音：落在当前位置的和弦音上，疏密跟着段落走
+    motif = [
+        (1.20, 0, 0.050), (3.30, 2, 0.045), (5.60, 1, 0.050),
+        (7.60, 3, 0.048), (9.40, 2, 0.052), (11.20, 0, 0.050),
+        (12.60, 1, 0.046), (14.20, 2, 0.050), (16.00, 3, 0.052),
+        (17.70, 1, 0.048), (19.60, 2, 0.050),
+        (22.30, 0, 0.054), (23.90, 1, 0.050), (25.40, 2, 0.054),
+        (27.00, 3, 0.052), (28.60, 1, 0.054), (30.20, 2, 0.056),
+        (31.80, 0, 0.054), (33.00, 1, 0.048),
     ]
-    for t0, m in notes:
-        d = min(2.6, dur - t0)
+    for t0, ix, amp in motif:
+        d = min(2.8, dur - t0)
         if d <= 0.2:
             continue
-        s = pluck(midi(m), d, 0.055)
+        ci = 0 if t0 < 8.4 else 1 if t0 < 16.2 else 2 if t0 < 23.6 else 3
+        m = chords[ci][ix % len(chords[ci])]
+        octave = 12 if ix >= 2 else 0
+        s = pluck(midi(m + octave), d, amp * 9.0)
         i0 = int(t0 * SR)
-        pan = 0.35 + 0.3 * ((m % 5) / 4.0)
+        pan = 0.34 + 0.32 * (0.5 + 0.5 * np.sin(t0 * 1.7))
         L[i0:i0 + len(s)] += s * (1 - pan)
         R[i0:i0 + len(s)] += s * pan
 
-    # 混响：两声道用不同噪声做脉冲响应，轻微加宽
-    wet = 0.34
+    # 混响：两声道用不同噪声做脉冲响应
+    wet = 0.40
     out = []
     for ch, seed in ((L, 11), (R, 29)):
-        ir = signal.fftconvolve(ch, _ir(1.9, seed), mode="full")[:n]
+        ir = signal.fftconvolve(ch, _ir(2.2, seed), mode="full")[:n]
         ir /= max(1e-9, np.abs(ir).max())
         out.append(ch * (1 - wet) + ir * np.abs(ch).max() * wet)
     st = np.stack(out, axis=1)
 
     # 高频收一点、低频切掉次声，整体更暖也更干净
-    sos = signal.butter(2, 7200 / (SR / 2), "low", output="sos")
-    st = signal.sosfilt(sos, st, axis=0)
-    hp = signal.butter(2, 42 / (SR / 2), "high", output="sos")
-    st = signal.sosfilt(hp, st, axis=0)
+    st = signal.sosfilt(signal.butter(2, 7600 / (SR / 2), "low", output="sos"), st, axis=0)
+    st = signal.sosfilt(signal.butter(2, 42 / (SR / 2), "high", output="sos"), st, axis=0)
 
-    # 轻轻的呼吸感
-    t = np.arange(n) / SR
-    st *= (0.94 + 0.06 * np.sin(2 * np.pi * 0.055 * t))[:, None]
+    # 全片的起伏：开场克制、打字段渐入、字幕段最满、收尾退回安静
+    swell = np.interp(t, [0, 4.0, 6.2, 10.6, 19.2, 22.2, 26.0, 32.4, dur],
+                         [0.62, 0.72, 0.80, 0.86, 0.94, 0.90, 1.00, 0.92, 0.55])
+    st *= swell[:, None]
 
-    # 34 秒后自然收干
+    # 呼吸感 + 收干
+    st *= (0.95 + 0.05 * np.sin(2 * np.pi * 0.055 * t))[:, None]
     tail = np.clip((dur - t) / 2.4, 0, 1)[:, None] ** 2
     return st * tail
 
@@ -274,6 +300,10 @@ def db(x):
 
 
 def mix(narration, music, duck_db=4.0, under_db=9.0):
+    if narration is None:
+        # 纯音乐：不做闪避，只把峰值压到留有余量的位置，响度统一交给后一步
+        return music * (0.5 / max(1e-9, np.abs(music).max()))
+
     env = envelope(narration)
     active = env > 0.01
     nar_rms = rms(narration[active]) if active.any() else rms(narration) or 1e-3
@@ -358,25 +388,33 @@ def mux(wav_path):
 
 def main():
     os.makedirs(BUILD_DIR, exist_ok=True)
-    mode = sys.argv[1] if len(sys.argv) > 1 else "build"
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    flags = [a for a in sys.argv[1:] if a.startswith("-")]
+    mode = args[0] if args else "build"
+    with_voice = "--voice" in flags
 
-    print("合成旁白：")
-    paths = synth_all()
-    segs = [(s, t, decode(p)) for (s, t), p in zip(SEGMENTS, paths)]
+    narration = None
+    starts, ends = [], []
 
-    if mode == "probe":
-        print("\n时长核对：")
-        place(segs)
-        print("\n共 %d 句，画面总长 %.1fs" % (len(segs), DURATION))
-        return
-
-    print("\n摆位：")
-    narration, starts, ends = place(segs)
+    if mode == "probe" or with_voice:
+        print("合成旁白：")
+        paths = synth_all()
+        segs = [(s, t, decode(p)) for (s, t), p in zip(SEGMENTS, paths)]
+        if mode == "probe":
+            print("\n时长核对：")
+            place(segs)
+            print("\n共 %d 句，画面总长 %.1fs" % (len(segs), DURATION))
+            return
+        print("\n摆位：")
+        narration, starts, ends = place(segs)
 
     print("\n合成配乐…")
     music = make_music()
-    print("  旁白 RMS %.1f dBFS / 音乐 RMS %.1f dBFS"
-          % (db(rms(narration)), db(rms(music))))
+    if narration is not None:
+        print("  旁白 RMS %.1f dBFS / 音乐 RMS %.1f dBFS"
+              % (db(rms(narration)), db(rms(music))))
+    else:
+        print("  纯音乐，RMS %.1f dBFS" % db(rms(music)))
 
     print("混合…")
     st = mix(narration, music)
@@ -386,9 +424,10 @@ def main():
     print("  峰值 %.1f dBFS / 整体 RMS %.1f dBFS"
           % (db(np.abs(st).max()), db(rms(st))))
 
-    # 统一到 -17 LUFS：静态增益 + 软限幅，不做动态压缩
+    # 统一到 -18 LUFS：静态增益 + 软限幅，不做动态压缩
     lufs = measure_lufs(wav_path)
-    gain = -18.0 - lufs
+    target = -18.0 if narration is not None else -16.0
+    gain = target - lufs
     if abs(gain) > 0.1:
         st = soft_limit(st * 10 ** (gain / 20))
         write_wav(wav_path, st)
@@ -399,9 +438,12 @@ def main():
     print("挂音轨…")
     mux(wav_path)
 
-    print("\n完成。入点：")
-    for i, (s, e) in enumerate(zip(starts, ends), 1):
-        print("  %2d  %5.2f – %5.2f  (%.2fs)" % (i, s, e, e - s))
+    if starts:
+        print("\n完成。入点：")
+        for i, (s, e) in enumerate(zip(starts, ends), 1):
+            print("  %2d  %5.2f – %5.2f  (%.2fs)" % (i, s, e, e - s))
+    else:
+        print("\n完成。纯音乐版，无旁白。")
 
 
 if __name__ == "__main__":

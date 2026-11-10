@@ -1,0 +1,6 @@
+# 运行 Diary 只需要一个依赖：pywebview（Windows 上它会自动带上 pythonnet + clr-loader，
+# 用系统自带的 WebView2 渲染界面）。
+pywebview>=6.2
+
+# 可选：make_icon.py 用来重新生成 app.ico / app.png
+# Pillow>=10

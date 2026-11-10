@@ -1222,6 +1222,7 @@
       (appliedTheme !== s.appearance.theme || appliedAccent !== s.appearance.accent);
     if (themeChanged) flashTheme();
 
+    r.dataset.mode = s.appearance.mode === "light" ? "light" : "dark";
     r.dataset.theme = s.appearance.theme;
     r.dataset.accent = s.appearance.accent;
     appliedTheme = s.appearance.theme;
@@ -1522,6 +1523,7 @@
 
     $$("#setTheme .theme-card").forEach((b) => b.classList.toggle("is-on", b.dataset.v === d.appearance.theme));
     $$("#setAccent .accent-dot").forEach((b) => b.classList.toggle("is-on", b.dataset.v === d.appearance.accent));
+    setSeg("#setMode", d.appearance.mode);
     setSeg("#setTopbar", d.appearance.topbar);
     $("#setBlur").value = d.appearance.blur;
     $("#setBlurVal").textContent = d.appearance.blur + " px";
@@ -1652,6 +1654,13 @@
     if (draft.appearance.accent === b.dataset.v) return;
     draft.appearance.accent = b.dataset.v;
     $$("#setAccent .accent-dot").forEach((x) => x.classList.toggle("is-on", x === b));
+    touch();
+  }));
+
+  $$("#setMode button").forEach((b) => b.addEventListener("click", () => {
+    if (draft.appearance.mode === b.dataset.v) return;
+    draft.appearance.mode = b.dataset.v;
+    setSeg("#setMode", b.dataset.v);
     touch();
   }));
 

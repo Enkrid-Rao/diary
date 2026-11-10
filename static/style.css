@@ -2321,3 +2321,356 @@ body[data-overlay="search"] .search-panel { transform: none; opacity: 1; }
     linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.004) 40%, rgba(255, 255, 255, 0.012)),
     var(--glass);
 }
+
+/* ============ 19. 浅色主题（paper） ===========================================
+   浅色不是把深色反相：反相会得到一堆发灰的"脏白"。这里的做法是——
+     · 底色改成一叠纸：页面最暗、面板略白、卡片纯白，抬升仍然是"变白一档"，
+       只是换了方向（深色往亮里抬，浅色也是往白里抬），逻辑没变；
+     · 凹陷件（输入框、轨道、页脚条、侧栏）用比纸更沉的暖灰压下去；
+     · 文字与强调色整体压深，浅底上才不会糊。同一套 --s1…--s5 名字，两套数值。
+   只覆盖颜色，不动布局、不动尺寸、不动任何交互。
+   ========================================================================== */
+
+/* ---------- 19.1 明暗不随底色主题变的那一层 ---------- */
+html[data-mode="light"] {
+  color-scheme: light;
+
+  --text: #23252d;
+  --muted: #5a6172;          /* 6.2:1 @ 白 / 5.1:1 @ s1 */
+  --faint: #666d7f;          /* 4.8:1 @ 白 / 4.3:1 @ s1，小字仍压得住 */
+
+  /* 兼容旧变量名 */
+  --cyan: #15707f;
+  --violet: #674aa3;
+
+  --line-1: rgba(24, 26, 34, 0.085);
+  --line-2: rgba(24, 26, 34, 0.14);
+  --line-3: rgba(24, 26, 34, 0.24);
+
+  /* s1 压沉 → s3 纯白；s4/s5 是"浅色下的悬停"，只能是淡淡一层灰 */
+  --s1: #ebe8e2;
+  --s2: #fbfaf7;
+  --s3: #ffffff;
+  --s4: #f2efe8;
+  --s5: #e8e4dc;
+
+  --edge-1: rgba(24, 26, 34, 0.1);
+  --edge-2: rgba(24, 26, 34, 0.16);
+  --edge-hi: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --edge-in: inset 0 1px 2px rgba(24, 26, 34, 0.07);
+
+  --sh-1: 0 1px 2px rgba(28, 30, 38, 0.06), 0 2px 8px rgba(28, 30, 38, 0.05);
+  --sh-2: 0 6px 20px rgba(28, 30, 38, 0.09);
+  --sh-3: 0 24px 60px rgba(28, 30, 38, 0.16);
+
+  --glass: linear-gradient(155deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.5) 55%, rgba(255, 255, 255, 0.72));
+  --hairline: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+
+  --accent-fill: var(--accent);
+  --accent-fill-rgb: var(--accent-rgb);
+}
+
+/* ---------- 19.2 三张纸：暖白 / 中性白 / 冷白 ---------- */
+html[data-mode="light"][data-theme="ink"] {
+  --ink: #f6f4f0;
+  --s1: #ebe8e2; --s2: #fbfaf7; --s3: #ffffff; --s4: #f2efe8; --s5: #e8e4dc;
+  --glow-a: 0.09; --glow-b: 0.07; --glow-c: 0.065;
+}
+html[data-mode="light"][data-theme="graphite"] {
+  --ink: #f4f4f4;
+  --s1: #e9e9e9; --s2: #fafafa; --s3: #ffffff; --s4: #f0f0f0; --s5: #e6e6e6;
+  --glow-a: 0.05; --glow-b: 0.045; --glow-c: 0.04;
+}
+html[data-mode="light"][data-theme="ocean"] {
+  --ink: #f1f5fa;
+  --s1: #e5ebf2; --s2: #f8fafd; --s3: #ffffff; --s4: #ecf1f7; --s5: #e0e7ef;
+  --glow-a: 0.08; --glow-b: 0.11; --glow-c: 0.09;
+}
+
+/* ---------- 19.3 强调色：同一支颜色在浅底上要压深，填充仍留亮的那支 ---------- */
+html[data-mode="light"][data-accent="amber"] {
+  --accent: #9a6314; --accent-deep: #7f4f0c; --accent-soft: #86560f;
+  --accent-rgb: 154, 99, 20;
+  --accent-fill: #e8a244; --accent-fill-rgb: 232, 162, 68;
+}
+html[data-mode="light"][data-accent="cyan"] {
+  --accent: #0f6b7a; --accent-deep: #0b5460; --accent-soft: #0d5f6d;
+  --accent-rgb: 15, 107, 122;
+  --accent-fill: #4fbdce; --accent-fill-rgb: 79, 189, 206;
+}
+html[data-mode="light"][data-accent="violet"] {
+  --accent: #674aa3; --accent-deep: #523a84; --accent-soft: #5b418f;
+  --accent-rgb: 103, 74, 163;
+  --accent-fill: #a284d4; --accent-fill-rgb: 162, 132, 212;
+}
+html[data-mode="light"][data-accent="rose"] {
+  --accent: #a24154; --accent-deep: #863141; --accent-soft: #8f3546;
+  --accent-rgb: 162, 65, 84;
+  --accent-fill: #dd8296; --accent-fill-rgb: 221, 130, 150;
+}
+
+/* ---------- 19.4 外壳：侧栏压沉、工作区留白 ---------- */
+/* 侧栏比工作区沉一档（#efebe3 vs #f6f4f0）：两块都是纸时，靠"谁更旧一点"
+   分出两层，比加一条更粗的分隔线干净。玻璃保留，只是把白调调薄。 */
+html[data-mode="light"] #sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.1) 46%, rgba(255, 255, 255, 0.3)),
+    linear-gradient(180deg, #f2eee7, #ede8df);
+  border-color: rgba(24, 26, 34, 0.07);
+  box-shadow: inset -1px 0 0 rgba(24, 26, 34, 0.03);
+}
+html[data-mode="light"] #workspace {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.18) 40%, rgba(255, 255, 255, 0.34)),
+    var(--glass);
+}
+html[data-mode="light"] body.topbar-glass #topbar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5)),
+    rgba(255, 255, 255, 0.55);
+  border-color: rgba(24, 26, 34, 0.08);
+  box-shadow: var(--sh-1);
+}
+html[data-mode="light"] body::after { opacity: 0.013; }
+html[data-mode="light"] ::-webkit-scrollbar-thumb { background-color: rgba(24, 26, 34, 0.16); }
+
+/* 浅色下的遮罩：不是"把灯关掉"，而是"把纸压上一层灰"。
+   深色遮罩叠在纸白上会把周围压成一圈黑框，比弹层本身还抢眼。 */
+html[data-mode="light"] .set-overlay {
+  background: radial-gradient(130% 120% at 50% 0%, rgba(56, 52, 44, 0.2), rgba(40, 37, 31, 0.32));
+}
+
+/* ---------- 19.5 侧栏 ---------- */
+html[data-mode="light"] .side-title { color: var(--text); }
+html[data-mode="light"] .entry-item .day { color: #2f323c; }
+html[data-mode="light"] .entry-item:hover .excerpt { color: #33363f; }
+html[data-mode="light"] .entry-item::before {
+  background: #c8ccd6;
+  border-color: rgba(24, 26, 34, 0.12);
+}
+html[data-mode="light"] .entry-item.active {
+  background: linear-gradient(140deg, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.035));
+  border-color: rgba(var(--accent-rgb), 0.22);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+html[data-mode="light"] .list-empty { color: var(--faint); }
+html[data-mode="light"] .list-empty::before {
+  background-color: rgba(24, 26, 34, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+html[data-mode="light"] .list-empty::first-line { color: #4d5364; }
+
+/* ---------- 19.6 顶栏 ---------- */
+html[data-mode="light"] .date-title { color: #14161c; }
+html[data-mode="light"] .date-block:hover .date-title { color: var(--accent); }
+html[data-mode="light"] .icon-btn:hover { background: rgba(24, 26, 34, 0.06); }
+
+/* ---------- 19.7 编辑区（CodeMirror） ---------- */
+html[data-mode="light"] .cm-s-dracula.CodeMirror { color: #24262e !important; }
+html[data-mode="light"] .cm-s-dracula .CodeMirror-linenumber { color: #b3b9c6; }
+html[data-mode="light"] .cm-s-dracula .CodeMirror-placeholder { color: #a3a9b8 !important; }
+html[data-mode="light"] .cm-s-dracula .cm-quote { color: #6b7280; }
+html[data-mode="light"] .cm-s-dracula .cm-url { color: #1f7a8a; }
+html[data-mode="light"] .cm-s-dracula .cm-comment { color: #7b8291; }
+/* Dracula 的霓虹色（粉/荧光绿/浅紫）在纸白上等于荧光笔，全部换成同色相的深支：
+   关键词走暗玫瑰、字符串走墨绿、内置走深青，色相不变、明度压到能读。
+   dracula.css 里是 span.cm-x（0,2,1），这里的 html[data-mode] 前缀（0,3,1）盖得住。 */
+html[data-mode="light"] .cm-s-dracula .cm-keyword { color: #b03a5b; }
+html[data-mode="light"] .cm-s-dracula .cm-operator { color: #9c3f60; }
+html[data-mode="light"] .cm-s-dracula .cm-tag { color: #b03a5b; }
+html[data-mode="light"] .cm-s-dracula .cm-string,
+html[data-mode="light"] .cm-s-dracula .cm-string-2 { color: #2f6b3f; }
+html[data-mode="light"] .cm-s-dracula .cm-number { color: #9a5a1e; }
+html[data-mode="light"] .cm-s-dracula .cm-def { color: #2b5fa8; }
+html[data-mode="light"] .cm-s-dracula .cm-atom { color: #6b3fa0; }
+html[data-mode="light"] .cm-s-dracula .cm-meta { color: #6b3fa0; }
+html[data-mode="light"] .cm-s-dracula .cm-builtin { color: #116b80; }
+html[data-mode="light"] .cm-s-dracula .cm-property { color: #116b80; }
+html[data-mode="light"] .cm-s-dracula .cm-attribute,
+html[data-mode="light"] .cm-s-dracula .cm-qualifier { color: #2f6b3f; }
+html[data-mode="light"] .cm-s-dracula .cm-variable,
+html[data-mode="light"] .cm-s-dracula .cm-variable-2 { color: #24262e; }
+html[data-mode="light"] .cm-s-dracula .cm-variable-3,
+html[data-mode="light"] .cm-s-dracula .cm-type { color: #9a5a1e; }
+html[data-mode="light"] .cm-s-dracula div.CodeMirror-selected { background: rgba(var(--accent-rgb), 0.16); }
+html[data-mode="light"] .cm-s-dracula .CodeMirror-activeline-background { background: rgba(24, 26, 34, 0.028); }
+html[data-mode="light"] .cm-s-dracula .CodeMirror-matchingbracket {
+  color: var(--accent) !important;
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+/* ---------- 19.8 预览 ---------- */
+html[data-mode="light"] .md-body { color: #2b2e37; }
+html[data-mode="light"] .md-body h1, html[data-mode="light"] .md-body h2,
+html[data-mode="light"] .md-body h3, html[data-mode="light"] .md-body h4,
+html[data-mode="light"] .md-body h5, html[data-mode="light"] .md-body h6 { color: #14161c; }
+html[data-mode="light"] .md-body a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+html[data-mode="light"] .md-body em { color: var(--violet); }
+html[data-mode="light"] .md-body blockquote { color: #4f5565; }
+html[data-mode="light"] .md-body pre {
+  background: rgba(24, 26, 34, 0.045);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+html[data-mode="light"] .md-body pre code { color: #2b2e37; }
+html[data-mode="light"] .md-body th {
+  background: rgba(24, 26, 34, 0.035);
+  color: #14161c;
+}
+html[data-mode="light"] .preview-empty svg {
+  color: #99a0b0;
+  background:
+    radial-gradient(60% 60% at 50% 38%, rgba(var(--accent-rgb), 0.1), transparent 72%),
+    linear-gradient(165deg, #ffffff, #f4f1eb);
+  box-shadow:
+    0 18px 40px rgba(28, 30, 38, 0.12),
+    0 0 54px rgba(var(--accent-rgb), 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(24, 26, 34, 0.05);
+}
+html[data-mode="light"] .preview-empty span { color: var(--faint); }
+
+/* ---------- 19.9 日历 ---------- */
+html[data-mode="light"] .cal-title { color: var(--text); }
+html[data-mode="light"] .cal-day { color: #3a3d47; }
+html[data-mode="light"] .cal-day.other { color: #a9afbd; }
+html[data-mode="light"] .cal-day.selected {
+  background: linear-gradient(150deg, var(--accent-fill), rgba(var(--accent-fill-rgb), 0.86));
+  color: #241708;
+  box-shadow: 0 5px 14px rgba(var(--accent-fill-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+html[data-mode="light"] .cal-nav:hover { background: rgba(24, 26, 34, 0.06); }
+html[data-mode="light"] .cal-today:hover { background: rgba(var(--accent-rgb), 0.14); }
+html[data-mode="light"] .cal-day.today { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.45); }
+
+/* ---------- 19.10 设置 ---------- */
+html[data-mode="light"] .set-dialog {
+  box-shadow: var(--sh-3), var(--edge-hi), 0 0 0 1px rgba(24, 26, 34, 0.09);
+}
+html[data-mode="light"] .set-nav { border-right: 1px solid rgba(24, 26, 34, 0.07); }
+html[data-mode="light"] .set-body {
+  /* 主体比栏亮、比卡片暗：三级阶梯 栏 #ebe8e2 < 页 #f1ede6 < 片 #ffffff。
+     深色下靠"提亮"分三级，浅色下同理，只是每级都往白走一点。 */
+  background: #f1ede6;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.9);
+}
+html[data-mode="light"] .set-nav-title { color: var(--text); }
+html[data-mode="light"] .set-nav-sub { color: var(--faint); }
+html[data-mode="light"] .set-tab { color: var(--muted); }
+html[data-mode="light"] .set-tab:hover { color: var(--text); }
+html[data-mode="light"] .set-head { box-shadow: 0 1px 0 rgba(24, 26, 34, 0.05); }
+html[data-mode="light"] .set-head h2 { color: #14161c; }
+html[data-mode="light"] .set-head p { color: var(--muted); }
+html[data-mode="light"] .set-card-title { color: var(--muted); }
+html[data-mode="light"] .set-name { color: #2c2f38; }
+html[data-mode="light"] .set-hint-line,
+html[data-mode="light"] .set-note { color: var(--faint); }
+html[data-mode="light"] .set-foot {
+  border-top: 1px solid rgba(24, 26, 34, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+html[data-mode="light"] .ghost-btn { color: var(--muted); }
+html[data-mode="light"] .ghost-btn:hover { color: var(--text); }
+/* 主按钮：浅底上 accent 本身已经是"深色",再用它当字色会灰掉（3.5:1），
+   改用 accent-deep 做字（4.9:1），底色只是薄薄一层琥珀。 */
+html[data-mode="light"] .pill-btn {
+  color: var(--accent-deep);
+  border-color: rgba(var(--accent-rgb), 0.34);
+  background: linear-gradient(150deg, rgba(var(--accent-rgb), 0.13), rgba(var(--accent-rgb), 0.055));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+html[data-mode="light"] .pill-btn:hover {
+  background: linear-gradient(150deg, rgba(var(--accent-rgb), 0.19), rgba(var(--accent-rgb), 0.09));
+  border-color: rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+html[data-mode="light"] .txt-input::placeholder { color: var(--faint); }
+html[data-mode="light"] .sc-name { color: #2c2f38; }
+html[data-mode="light"] .sc-key { color: #34373f; }
+html[data-mode="light"] .sc-key.is-empty { color: #9096a4; }
+html[data-mode="light"] .theme-name { color: var(--text); }
+html[data-mode="light"] .theme-desc { color: var(--faint); }
+
+/* 主题缩略图跟着明暗走：浅色模式下它们预览的是"浅色纸" */
+html[data-mode="light"] .theme-swatch[data-swatch="ink"] {
+  background:
+    radial-gradient(60% 70% at 24% 26%, rgba(240, 180, 106, 0.5), transparent 70%),
+    radial-gradient(55% 65% at 82% 74%, rgba(183, 154, 224, 0.42), transparent 70%),
+    #f6f4f0;
+}
+html[data-mode="light"] .theme-swatch[data-swatch="graphite"] {
+  background:
+    radial-gradient(60% 70% at 24% 26%, rgba(160, 164, 172, 0.32), transparent 70%),
+    radial-gradient(55% 65% at 82% 74%, rgba(140, 144, 152, 0.26), transparent 70%),
+    #f4f4f4;
+}
+html[data-mode="light"] .theme-swatch[data-swatch="ocean"] {
+  background:
+    radial-gradient(60% 70% at 24% 26%, rgba(110, 176, 220, 0.5), transparent 70%),
+    radial-gradient(55% 65% at 82% 74%, rgba(126, 146, 226, 0.4), transparent 70%),
+    #f1f5fa;
+}
+
+/* 开关开态：浅底上用亮的那支强调色，深色开关会显得脏 */
+html[data-mode="light"] .sw[aria-checked="true"] {
+  background: linear-gradient(180deg, var(--accent-fill), rgba(var(--accent-fill-rgb), 0.86));
+  border-color: rgba(var(--accent-fill-rgb), 0.5);
+  box-shadow:
+    0 2px 8px rgba(var(--accent-fill-rgb), 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+html[data-mode="light"] .sw[aria-checked="true"]:hover {
+  background: linear-gradient(180deg, var(--accent-fill), rgba(var(--accent-fill-rgb), 0.95));
+  box-shadow:
+    0 3px 12px rgba(var(--accent-fill-rgb), 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+html[data-mode="light"] .sw::after { background: linear-gradient(180deg, #ffffff, #f2f2f4); }
+html[data-mode="light"] .rng::-webkit-slider-thumb {
+  background: var(--accent-fill);
+  border-color: #fff;
+  box-shadow: 0 0 0 1px rgba(var(--accent-fill-rgb), 0.55), 0 2px 6px rgba(var(--accent-fill-rgb), 0.4);
+}
+html[data-mode="light"] .rng::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(90deg,
+      rgba(var(--accent-fill-rgb), 0.92) 0 var(--pct, 50%),
+      rgba(24, 26, 34, 0.09) var(--pct, 50%) 100%);
+}
+
+/* ---------- 19.11 搜索 ---------- */
+html[data-mode="light"] .search-overlay {
+  background: radial-gradient(120% 100% at 50% 0%, rgba(56, 52, 44, 0.18), rgba(40, 37, 31, 0.28));
+}
+html[data-mode="light"] .search-panel {
+  box-shadow: var(--sh-3), var(--edge-hi), 0 0 0 1px rgba(24, 26, 34, 0.08);
+}
+html[data-mode="light"] .search-count,
+html[data-mode="light"] .sr-hint { color: var(--faint); }
+html[data-mode="light"] .search-input::placeholder { color: var(--faint); }
+html[data-mode="light"] .sr-title { color: var(--muted); }
+html[data-mode="light"] .sr-snippet { color: #2c2f38; }
+html[data-mode="light"] .sr-item:hover { background: rgba(24, 26, 34, 0.04); }
+html[data-mode="light"] .sr-item.is-sel {
+  background: linear-gradient(150deg, rgba(var(--accent-rgb), 0.13), rgba(var(--accent-rgb), 0.05));
+  border-color: rgba(var(--accent-rgb), 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 4px 12px rgba(24, 26, 34, 0.06);
+}
+html[data-mode="light"] .sr-item.is-sel .sr-snippet { color: #14161c; }
+/* 命中词在浅底上要"被划出来"：深色字 + 饱和琥珀块 + 一圈细描边，
+   靠的是"荧光笔盖住纸"，不是靠再叠一层浅琥珀（浅底叠浅底等于没标） */
+html[data-mode="light"] .sr-snippet mark {
+  background: rgba(var(--accent-fill-rgb), 0.5);
+  color: #241708;
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.2);
+}
+html[data-mode="light"] .sr-item.is-sel .sr-snippet mark {
+  background: rgba(var(--accent-fill-rgb), 0.62);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.28);
+}
+html[data-mode="light"] .search-foot { border-top: 1px solid rgba(24, 26, 34, 0.06); }
+
+/* ---------- 19.12 LaTeX 补全 ---------- */
+html[data-mode="light"] .latex-hint {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(24, 26, 34, 0.1);
+}

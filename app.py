@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
 
 _T0 = time.perf_counter()
-APP_VERSION = "1.3"
+APP_VERSION = "1.4.0"
 
 if getattr(sys, "frozen", False):
     # PyInstaller windowed 模式下 OS 层 stdout/stderr 句柄无效，
@@ -93,6 +93,7 @@ DEFAULT_SETTINGS = {
         "window": {"w": 1280, "h": 820, "x": None, "y": None, "max": False},
     },
     "appearance": {
+        "mode": "dark",              # dark | light（浅色为备选，纸感底色）
         "theme": "ink",              # ink | graphite | ocean
         "accent": "amber",           # amber | cyan | violet | rose
         "topbar": "flat",            # flat | glass
@@ -116,6 +117,7 @@ DEFAULT_SETTINGS = {
     "shortcuts": dict(DEFAULT_SHORTCUTS),
 }
 
+_MODES = ("dark", "light")
 _THEMES = ("ink", "graphite", "ocean")
 _ACCENTS = ("amber", "cyan", "violet", "rose")
 _TOPBARS = ("flat", "glass")
@@ -183,6 +185,7 @@ def sanitize(raw):
 
     a = raw.get("appearance") or {}
     if isinstance(a, dict):
+        s["appearance"]["mode"] = _choice(a.get("mode"), _MODES, "dark")
         s["appearance"]["theme"] = _choice(a.get("theme"), _THEMES, "ink")
         s["appearance"]["accent"] = _choice(a.get("accent"), _ACCENTS, "amber")
         s["appearance"]["topbar"] = _choice(a.get("topbar"), _TOPBARS, "flat")

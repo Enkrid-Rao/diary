@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Diary — 封面</title>
+<style>
+  :root {
+    --ink: #07080c;
+    --text: #f1f3f8;
+    --body: #d5d9e6;
+    --muted: #9ba1b6;
+    --faint: #6f7691;
+    --accent: #f0b46a;
+    --accent-rgb: 240, 180, 106;
+    --violet: #b79ae0;
+    --line: rgba(255, 255, 255, .12);
+    --u: 1;  /* 由脚本按视口算成无单位比例，供 calc(var(--u) * Npx) 使用 */
+    --font-ui: "JetBrains Mono", "Noto Sans SC", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100vw; height: 100vh;
+    background: var(--ink);
+    overflow: hidden;
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    color: var(--text);
+  }
+
+  .stage {
+    position: relative;
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center;
+    padding: 0 calc(var(--u) * 56px);
+    overflow: hidden;
+  }
+
+  /* 背景：两团极光 + 暗角 */
+  .aurora { position: absolute; inset: 0; overflow: hidden; }
+  .aurora i {
+    position: absolute; display: block; border-radius: 50%;
+    filter: blur(calc(var(--u) * 80px));
+  }
+  .aurora .a1 {
+    width: calc(var(--u) * 760px); height: calc(var(--u) * 620px);
+    left: calc(var(--u) * -180px); top: calc(var(--u) * -220px);
+    background: radial-gradient(circle, rgba(var(--accent-rgb), .38), transparent 68%);
+  }
+  .aurora .a2 {
+    width: calc(var(--u) * 900px); height: calc(var(--u) * 720px);
+    right: calc(var(--u) * -260px); bottom: calc(var(--u) * -300px);
+    background: radial-gradient(circle, rgba(150, 130, 220, .42), transparent 70%);
+  }
+  .aurora .a3 {
+    width: calc(var(--u) * 620px); height: calc(var(--u) * 480px);
+    left: calc(var(--u) * 380px); bottom: calc(var(--u) * -260px);
+    background: radial-gradient(circle, rgba(120, 190, 210, .16), transparent 70%);
+  }
+  .vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 42% 50%, transparent 40%, rgba(4, 5, 8, .72) 100%);
+  }
+
+  /* 左栏 */
+  .copy { position: relative; z-index: 2; flex: 0 0 45%; padding-right: calc(var(--u) * 20px); }
+
+  .eyebrow {
+    display: flex; align-items: center; gap: calc(var(--u) * 9px);
+    font-size: calc(var(--u) * 12.5px); letter-spacing: .18em;
+    color: var(--accent); text-transform: uppercase;
+    margin-bottom: calc(var(--u) * 26px);
+  }
+  .eyebrow::before {
+    content: ""; width: calc(var(--u) * 22px); height: 1px;
+    background: rgba(var(--accent-rgb), .75);
+  }
+
+  h1 {
+    font-size: calc(var(--u) * 88px);
+    font-weight: 500;
+    letter-spacing: calc(var(--u) * -2px);
+    line-height: .98;
+    margin-bottom: calc(var(--u) * 18px);
+  }
+
+  .tagline {
+    font-size: calc(var(--u) * 25px);
+    line-height: 1.5;
+    color: var(--body);
+    letter-spacing: calc(var(--u) * .3px);
+    margin-bottom: calc(var(--u) * 26px);
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 10px); }
+  .chip {
+    font-size: calc(var(--u) * 13px);
+    color: var(--muted);
+    padding: calc(var(--u) * 6px) calc(var(--u) * 12px);
+    border: 1px solid var(--line);
+    border-radius: calc(var(--u) * 999px);
+    background: rgba(255, 255, 255, .028);
+    white-space: nowrap;
+  }
+  .chip b { color: var(--accent); font-weight: 500; }
+
+  .foot {
+    margin-top: calc(var(--u) * 30px);
+    font-size: calc(var(--u) * 12px);
+    color: var(--faint);
+    letter-spacing: .04em;
+  }
+
+  /* 右侧：预览窗切片 */
+  .slice {
+    position: relative; z-index: 2;
+    width: calc(var(--u) * 470px);
+    height: calc(var(--u) * 580px);
+    margin-left: auto;
+    border-radius: calc(var(--u) * 16px);
+    border: 1px solid rgba(255, 255, 255, .13);
+    background: rgba(12, 14, 20, .9);
+    box-shadow:
+      0 calc(var(--u) * 30px) calc(var(--u) * 70px) rgba(0, 0, 0, .62),
+      0 0 0 1px rgba(0, 0, 0, .35),
+      inset 0 1px 0 rgba(255, 255, 255, .07);
+    overflow: hidden;
+    transform: rotate(-1.6deg);
+  }
+  .slice img {
+    display: block; width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 100% 58%;
+    transform: scale(1.32);
+    transform-origin: 100% 50%;
+  }
+  .slice::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(200deg, rgba(255, 255, 255, .10), transparent 34%),
+      linear-gradient(to right, rgba(10, 11, 16, .92), transparent 22%),
+      linear-gradient(to top, rgba(9, 10, 15, .62) 0%, rgba(9, 10, 15, .22) 10%, transparent 22%);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="aurora"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
+    <div class="vignette"></div>
+
+    <div class="copy">
+      <div class="eyebrow">本地优先 · 不要账号</div>
+      <h1>Diary</h1>
+      <div class="tagline">每天写一点<br>公式也在里面</div>
+      <div class="chips">
+        <span class="chip"><b>Markdown</b> 一天一页</span>
+        <span class="chip"><b>LaTeX</b> 实时渲染</span>
+        <span class="chip">全文搜索</span>
+      </div>
+      <div class="foot">github.com/Enkrid-Rao/diary</div>
+    </div>
+
+    <div class="slice">
+      <img src="../docs/01-main-flat.webp" alt="">
+    </div>
+  </div>
+  <script>
+    // --u 是无单位比例：1146×717 下等于 1，其它尺寸等比缩放
+    function fit() {
+      var u = Math.min(innerWidth / 1146, innerHeight / 717);
+      document.documentElement.style.setProperty('--u', u);
+    }
+    fit();
+    addEventListener('resize', fit);
+    document.fonts.ready.then(function () { window.__ready = true; });
+  </script>
+</body>
+</html>

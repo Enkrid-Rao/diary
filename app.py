@@ -59,11 +59,42 @@ else:
     DEFAULT_DIARY_DIR = os.path.join(BASE_DIR, "diaries")
 
 STATIC_DIR = os.path.join(RES_DIR, "static")
+# 老的 Diary.exe 用 runpy 跑磁盘上的 app.py，这时 _MEIPASS 里没有 static/，
+# 要退回程序目录去找；正式打包版才用 _MEIPASS 里的那一份。
+if not os.path.isdir(STATIC_DIR):
+    STATIC_DIR = os.path.join(BASE_DIR, "static")
 # WebView2 的配置/缓存目录。装在 Program Files 时程序目录只读，
 # 所以打包版必须放到用户可写的 DATA_DIR 下。
 WEBVIEW_DIR = os.path.join(DATA_DIR, ".webview-data")
-PORT = 17823
+
+
+def _port():
+    """端口默认 17823；开发时可以用 DIARY_PORT 换个端口，
+    好让源码版和已安装的版本同时开着，互不抢占。"""
+    try:
+        p = int(os.environ.get("DIARY_PORT") or 17823)
+        return p if 1024 < p < 65536 else 17823
+    except ValueError:
+        return 17823
+
+
+PORT = _port()
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+# ============ 自动更新 ============
+# 老的 Diary.exe 用 runpy 加载 app.py，不会把所在目录塞进 sys.path；
+# 显式补一条，源码运行、runpy 壳、打包版三种情况都能 import 到同目录的模块。
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+import updater  # noqa: E402 - 依赖 APP_VERSION / BASE_DIR 已经算好
+
+PORTABLE_BUILD = _FROZEN and os.path.exists(os.path.join(BASE_DIR, "portable.txt"))
+UPD = updater.Updater(
+    APP_VERSION,
+    portable=PORTABLE_BUILD,
+    is_frozen=_FROZEN,
+    exe_path=os.path.join(BASE_DIR, "Diary.exe") if _FROZEN else sys.executable,
+)
 
 MIME = {
     ".html": "text/html; charset=utf-8",
@@ -97,6 +128,8 @@ DEFAULT_SHORTCUTS = {
     "today": "Ctrl-T",
     "toggleSide": "Ctrl-\\",
     "settings": "Ctrl-,",
+    "lineBelow": "Shift-Enter",   # 在光标行下方插一个空行（VS Code 的 Insert Line Below）
+    "selectLine": "Ctrl-L",       # 选中光标所在行
 }
 
 DEFAULT_SETTINGS = {
@@ -107,6 +140,8 @@ DEFAULT_SETTINGS = {
         "startup": "today",          # today | last
         "rememberWindow": True,
         "lastDate": "",
+        "autoUpdate": False,         # 启动后自动查 GitHub Release（默认关）
+        "updateSkipped": "",         # 用户点了"跳过这个版本"
         "window": {"w": 1280, "h": 820, "x": None, "y": None, "max": False},
     },
     "appearance": {
@@ -134,6 +169,7 @@ DEFAULT_SETTINGS = {
         "lineNumbers": False,
         "font": "jetbrains",         # jetbrains(默认) | system | wenkai | custom
         "fontCustom": "",            # 自定义编辑区字体（font=custom 时生效）
+        "live": False,               # 边写边渲染（单栏，隐藏右侧预览）
     },
     "ui": {
         "collapsedMonths": [],       # 侧栏已折叠的月份分组（"YYYY-MM"）
@@ -203,6 +239,9 @@ def sanitize(raw):
         s["general"]["autosaveDelay"] = _int(g.get("autosaveDelay"), 200, 5000, 900)
         s["general"]["startup"] = _choice(g.get("startup"), _STARTUPS, "today")
         s["general"]["rememberWindow"] = _bool(g.get("rememberWindow"), True)
+        s["general"]["autoUpdate"] = _bool(g.get("autoUpdate"), False)
+        skipped = g.get("updateSkipped")
+        s["general"]["updateSkipped"] = skipped.strip()[:20] if isinstance(skipped, str) else ""
         last = g.get("lastDate")
         s["general"]["lastDate"] = last if isinstance(last, str) and DATE_RE.match(last) else ""
         w = g.get("window") or {}
@@ -244,6 +283,7 @@ def sanitize(raw):
         s["editor"]["lineNumbers"] = _bool(e.get("lineNumbers"), False)
         s["editor"]["font"] = _choice(e.get("font"), _FONT_ED, "jetbrains")
         s["editor"]["fontCustom"] = _fontstr(e.get("fontCustom"))
+        s["editor"]["live"] = _bool(e.get("live"), False)
 
     u = raw.get("ui") or {}
     if isinstance(u, dict):
@@ -687,6 +727,11 @@ class Handler(BaseHTTPRequestHandler):
             self._page()
         elif path == "/api/ping":
             self._json({"ok": True})
+        elif path == "/api/update/check":
+            force = str(query.get("force") or "0") in ("1", "true", "yes")
+            self._json(UPD.check(force=force))
+        elif path == "/api/update/state":
+            self._json(UPD.state())
         elif path == "/api/today":
             self._json({"date": datetime.now().strftime("%Y-%m-%d")})
         elif path == "/api/settings":
@@ -816,6 +861,31 @@ class Handler(BaseHTTPRequestHandler):
                 except OSError:
                     count = 0
             self._json({"ok": True, "exists": exists, "mdCount": count})
+        elif path == "/api/update/download":
+            body()
+            self._json({"ok": True, "state": UPD.start_download()})
+        elif path == "/api/update/install":
+            body()
+            res = UPD.install()
+            self._json(res)
+            if res.get("ok"):
+                # 让响应先发出去，再退出：安装器需要 exe 不再被占用
+                def _quit():
+                    time.sleep(0.8)
+                    os._exit(0)
+                t = threading.Timer(1.0, _quit)
+                t.daemon = True
+                t.start()
+        elif path == "/api/open-url":
+            data = body() or {}
+            url = str(data.get("url") or "")
+            ok = url.startswith("https://github.com/Enkrid-Rao/diary/releases")
+            if ok:
+                try:
+                    os.startfile(url)  # noqa: S606 - 白名单内的发布页
+                except Exception:
+                    ok = False
+            self._json({"ok": ok})
         elif path == "/api/bye":
             self._json({"ok": True})
             if os.environ.get("DIARY_NOOPEN"):

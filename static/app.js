@@ -173,6 +173,52 @@
     });
   }
 
+  /* Shift+Enter：在光标所在行下面插一个空行，光标跟到新行（VS Code 的 Insert Line Below）。
+     和 Enter 的区别：Enter 是在光标处把这一行劈成两半，后半截掉到下一行；
+     这里不动当前行的任何一个字，只在它下面垫一行空的。 */
+  function insertLineBelow(cm) {
+    cm.operation(() => {
+      const lines = [];
+      for (const r of cm.listSelections()) {
+        const l = r.head.line;
+        if (lines.indexOf(l) < 0) lines.push(l);
+      }
+      lines.sort((a, b) => b - a);   // 从下往上插，上面的行号才不会被打乱
+      for (const l of lines) {
+        cm.replaceRange("\n", { line: l, ch: cm.getLine(l).length });
+      }
+      cm.setSelections(lines.map((l) => ({
+        anchor: { line: l + 1, ch: 0 },
+        head: { line: l + 1, ch: 0 },
+      })).sort((a, b) => a.anchor.line - b.anchor.line));
+    });
+    cm.focus();
+  }
+
+  /* Ctrl+L：选中光标所在行（含行尾换行，和常见编辑器一致）。
+     已经整行选中时再按一次，向下多选一行，连续按就能一段段往上拿。 */
+  function selectCurrentLine(cm) {
+    const last = cm.lastLine();
+    const out = cm.listSelections().map((r) => {
+      const l1 = Math.min(r.anchor.line, r.head.line);
+      const l2 = Math.max(r.anchor.line, r.head.line);
+      const len = cm.getLine(l2).length;
+      const endPos = l2 < last ? { line: l2 + 1, ch: 0 } : { line: l2, ch: len };
+      const whole = l1 === l2 && r.anchor.ch === 0 &&
+        r.head.line === endPos.line && r.head.ch === endPos.ch;
+      if (whole && l2 < last) {
+        const next = Math.min(last, l2 + 1);
+        return {
+          anchor: { line: l1, ch: 0 },
+          head: next < last ? { line: next + 1, ch: 0 } : { line: next, ch: cm.getLine(next).length },
+        };
+      }
+      return { anchor: { line: l1, ch: 0 }, head: endPos };
+    });
+    cm.setSelections(out);
+    cm.focus();
+  }
+
   const cm = CodeMirror.fromTextArea($("#editor"), {
     mode: "markdown",
     theme: "dracula",
@@ -1313,6 +1359,439 @@
     themeTimer = setTimeout(() => document.body.classList.remove("theming"), 300);
   }
 
+  /* ============================================================
+     光标对齐 + 边写边渲染
+     ============================================================ */
+
+  /* ---------- 光标驱动的预览对齐 ----------
+     原来的联动只看"编辑区视口顶部落在哪一行"，光标在视口下半部分时，预览仍按顶部
+     对齐，写到页面底部就会出现在写、却看不到。这里补一条以光标为准的规则：
+     把光标所在块映射到预览里的 y，再看它落在预览视口的哪个位置；
+     只有跑出 15%–85% 的舒适区才推一次，避免每敲一个字都抖。 */
+  let cursorSyncTimer = 0;
+
+  function previewYAtCursor() {
+    if (!anchors.length) return null;
+    measurePreview();
+    const pos = cm.getCursor("head");
+    const j = Math.max(0, blockIndexAt(pos.line));
+    const head = anchors[j];
+    const tail = blockTail(j);
+    const span = tail.line - head.line;
+    const r = span > 0 ? Math.max(0, Math.min(1, (pos.line - head.line) / span)) : 0;
+    return head.py + r * (tail.y - head.py);
+  }
+
+  function syncPreviewToCursor() {
+    if (!syncEnabled || switching) return;
+    if (document.body.classList.contains("live-mode")) return;
+    const py = previewYAtCursor();
+    if (py == null) return;
+    const vh = previewPane.clientHeight;
+    const max = pvMax();
+    if (!vh || max <= 0) return;
+    const rel = (py - previewPane.scrollTop) / vh;
+    if (rel >= 0.15 && rel <= 0.85) return;
+    const target = Math.max(0, Math.min(max, py - (rel < 0.15 ? 0.3 : 0.55) * vh));
+    setPaneScroll(previewPane, target);
+  }
+
+  function scheduleCursorSync() {
+    clearTimeout(cursorSyncTimer);
+    cursorSyncTimer = setTimeout(syncPreviewToCursor, 90);
+  }
+
+  /* ---------- 边写边渲染 ----------
+     单栏显示编辑区，靠装饰把 Markdown 渲染成接近最终的样子：
+       · 标题行：整行放大加粗
+       · 强调 / 行内代码 / 链接：给内容套样式
+       · 标记符号（#、**、`、[]() 等）：光标不在这一行时收起来，回到该行就露出来
+       · 行内公式：非当前行直接换成 KaTeX 渲染结果
+       · 块级公式：源码保留，下面挂一块渲染结果（CM5 的 replacedWith 不能跨行）
+     全部用 markText / addLineClass / addLineWidget，正文值从不改动。 */
+  let liveMarks = [];
+  let liveLines = [];
+  let liveWidgets = [];
+  let liveTimer = 0;
+
+  function liveOn() {
+    return !!(S && S.editor && S.editor.live);
+  }
+
+  function clearLive() {
+    cm.operation(() => {
+      for (const m of liveMarks) { try { m.clear(); } catch (e) { /* 行已被删 */ } }
+      for (const w of liveWidgets) { try { cm.removeLineWidget(w); } catch (e) { /* noop */ } }
+      for (const it of liveLines) {
+        for (let lv = 1; lv <= 6; lv++) cm.removeLineClass(it.line, "text", "cm-live-h" + lv);
+        cm.removeLineClass(it.line, "text", "cm-live-quote");
+        cm.removeLineClass(it.line, "text", "cm-live-mathsrc");
+      }
+    });
+    liveMarks = [];
+    liveLines = [];
+    liveWidgets = [];
+  }
+
+  function liveMark(from, to, cls) {
+    if (!(to.line > from.line || to.ch > from.ch)) return null;
+    const m = cm.markText(from, to, { className: cls });
+    liveMarks.push(m);
+    return m;
+  }
+
+  function liveMathWidget(tex, display) {
+    const box = document.createElement(display ? "div" : "span");
+    box.className = display ? "cm-live-math cm-live-math-block" : "cm-live-math";
+    try {
+      window.katex.render(tex, box, { displayMode: !!display, throwOnError: false });
+    } catch (e) {
+      box.textContent = (display ? "$$" : "$") + tex + (display ? "$$" : "$");
+    }
+    return box;
+  }
+
+  function overlaps(ranges, a, b) {
+    for (const r of ranges) if (a < r[1] && b > r[0]) return true;
+    return false;
+  }
+
+  /* 一行里的行内标记：命中就返回样式区间，非当前行顺手把符号折起来 */
+  const LIVE_RULES = [
+    { re: /\*\*([^*\n]+)\*\*/g, cls: "cm-live-bold", head: 2, tail: 2 },
+    { re: /(?<!\*)\*([^*\n]+)\*(?!\*)/g, cls: "cm-live-italic", head: 1, tail: 1 },
+    { re: /~~([^~\n]+)~~/g, cls: "cm-live-strike", head: 2, tail: 2 },
+    { re: /`([^`\n]+)`/g, cls: "cm-live-code", head: 1, tail: 1 },
+    { re: /\[([^\]\n]+)\]\(([^)\n]+)\)/g, cls: "cm-live-link", link: true },
+  ];
+
+  function decorateLine(line, text, activeLine, mathRanges) {
+    if (!text || !text.trim()) return;
+    const editing = line === activeLine;   // 当前行：样式照给，但符号留着
+
+    // 标题
+    const h = text.match(/^(#{1,6})\s+/);
+    if (h) {
+      cm.addLineClass(line, "text", "cm-live-h" + h[1].length);
+      liveLines.push({ line, lv: 0 });
+      if (!editing) liveMark({ line, ch: 0 }, { line, ch: h[0].length }, "cm-live-mark");
+    }
+
+    // 引用
+    const q = text.match(/^\s{0,3}>\s?/);
+    if (q) {
+      cm.addLineClass(line, "text", "cm-live-quote");
+      liveLines.push({ line, lv: 0 });
+      if (!editing) liveMark({ line, ch: 0 }, { line, ch: q[0].length }, "cm-live-mark");
+    }
+
+    // 行内公式：非当前行换成渲染结果；当前行只上色，方便改
+    for (const r of mathRanges) {
+      if (editing) {
+        liveMark({ line, ch: r[0] }, { line, ch: r[1] }, "cm-live-mathsrc");
+      } else {
+        const widget = liveMathWidget(text.slice(r[0] + 1, r[1] - 1), false);
+        liveMarks.push(cm.markText({ line, ch: r[0] }, { line, ch: r[1] },
+          { replacedWith: widget }));
+      }
+    }
+
+    for (const rule of LIVE_RULES) {
+      rule.re.lastIndex = 0;
+      let m;
+      while ((m = rule.re.exec(text))) {
+        const start = m.index;
+        const end = start + m[0].length;
+        if (overlaps(mathRanges, start, end)) continue;
+        if (rule.link) {
+          const textStart = start + 1;
+          const textEnd = textStart + m[1].length;
+          liveMark({ line, ch: textStart }, { line, ch: textEnd }, rule.cls);
+          if (!editing) {
+            liveMark({ line, ch: start }, { line, ch: textStart }, "cm-live-mark");
+            liveMark({ line, ch: textEnd }, { line, ch: end }, "cm-live-mark");
+          }
+        } else {
+          const textStart = start + rule.head;
+          const textEnd = textStart + m[1].length;
+          liveMark({ line, ch: textStart }, { line, ch: textEnd }, rule.cls);
+          if (!editing) {
+            liveMark({ line, ch: start }, { line, ch: textStart }, "cm-live-mark");
+            liveMark({ line, ch: textEnd }, { line, ch: end }, "cm-live-mark");
+          }
+        }
+      }
+    }
+  }
+
+  function buildLive() {
+    clearLive();
+    if (!liveOn()) return;
+    if (!window.katex) return;
+
+    const vp = cm.getViewport();
+    const from = Math.max(cm.firstLine(), vp.from - 20);
+    const to = Math.min(cm.lastLine(), vp.to + 20);
+    const activeLine = cm.getCursor().line;
+    let fence = null;
+
+    for (let line = from; line <= to; line++) {
+      const text = cm.getLine(line);
+      const trimmed = text.trim();
+
+      // 围栏代码块：整块只做等宽底色，不解析里面的标记
+      const fm = trimmed.match(/^(`{3,}|~{3,})/);
+      if (fm) {
+        if (!fence) { fence = fm[1][0].repeat(3); cm.addLineClass(line, "text", "cm-live-codeblock"); liveLines.push({ line, lv: 0 }); }
+        else if (trimmed.startsWith(fence)) { fence = null; cm.addLineClass(line, "text", "cm-live-codeblock"); liveLines.push({ line, lv: 0 }); }
+        continue;
+      }
+      if (fence) { cm.addLineClass(line, "text", "cm-live-codeblock"); liveLines.push({ line, lv: 0 }); continue; }
+
+      // 块级公式：单行 $$...$$ 直接整行替换；多行保源码，下面挂渲染块
+      const single = text.match(/^\s*\$\$([\s\S]+)\$\$\s*$/);
+      if (single && line !== activeLine) {
+        const widget = liveMathWidget(single[1], true);
+        liveMarks.push(cm.markText({ line, ch: 0 }, { line, ch: text.length },
+          { replacedWith: widget }));
+        continue;
+      }
+      if (/^\s*\$\$/.test(text)) {
+        let end = -1;
+        for (let k = line + 1; k <= Math.min(to, line + 60); k++) {
+          if (/\$\$\s*$/.test(cm.getLine(k))) { end = k; break; }
+        }
+        if (end > 0 && (activeLine < line || activeLine > end)) {
+          const body = [];
+          for (let k = line + 1; k < end; k++) body.push(cm.getLine(k));
+          const wrap = document.createElement("div");
+          wrap.className = "cm-live-math-widget";
+          try {
+            window.katex.render(body.join("\n"), wrap, { displayMode: true, throwOnError: false });
+          } catch (e) { /* 渲染失败就留源码 */ }
+          if (wrap.childNodes.length) {
+            liveWidgets.push(cm.addLineWidget(end, wrap, { above: false }));
+          }
+          for (let k = line; k <= end; k++) {
+            cm.addLineClass(k, "text", "cm-live-mathsrc");
+            liveLines.push({ line: k, lv: 0 });
+          }
+          line = end;
+          continue;
+        }
+      }
+
+      // 收集行内公式区间，其它规则避开这些位置
+      const mathRanges = [];
+      const dollar = /\$([^$\n]+)\$/g;
+      let dm;
+      while ((dm = dollar.exec(text))) {
+        mathRanges.push([dm.index, dm.index + dm[0].length]);
+      }
+
+      decorateLine(line, text, activeLine, mathRanges, false);
+    }
+  }
+
+  function scheduleLive(delay) {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => cm.operation(buildLive), delay == null ? 120 : delay);
+  }
+
+  cm.on("change", () => { if (liveOn()) scheduleLive(); });
+  cm.on("cursorActivity", () => { if (liveOn()) scheduleLive(60); });
+  cm.on("scroll", () => { if (liveOn()) scheduleLive(140); });
+  cm.on("cursorActivity", scheduleCursorSync);
+
+  function applyLiveMode(on) {
+    document.body.classList.toggle("live-mode", !!on);
+    if (on) {
+      clearLive();
+      scheduleLive(0);
+    } else {
+      clearLive();
+    }
+    setTimeout(() => cm.refresh(), 60);
+  }
+
+  /* ============================================================
+     自动更新
+     ------------------------------------------------------------
+     默认关闭：没打开时应用不会主动发出任何网络请求。
+     打开后启动 3 秒查一次，之后每 6 小时一次；手动点「检查更新」不受开关限制。
+     ============================================================ */
+  let updateInfo = null;        // 最近一次检查结果
+  let updatePhase = "idle";     // idle | downloading | ready | manual | error
+  let autoTimer = 0;            // 6 小时轮询
+  let autoKickoff = 0;          // 启动后的首次延时
+  let pollTimer = 0;
+  let lastAuto = null;
+
+  function setUpdatePill(info) {
+    const el = $("#updatePill");
+    if (!el) return;
+    const skipped = !!(S && info && S.general.updateSkipped === info.latest);
+    const show = !!(info && info.ok && info.hasUpdate && !skipped);
+    el.hidden = !show;
+    if (show) $("#updatePillText").textContent = "v" + info.latest + " 可用";
+  }
+
+  function setUpdateBar(pct, visible) {
+    const bar = $("#setUpdateBar");
+    if (!bar) return;
+    bar.hidden = !visible;
+    if (visible) bar.style.setProperty("--pct", Math.max(0, Math.min(100, pct)) + "%");
+  }
+
+  function renderUpdate(info) {
+    const now = $("#setVersionNow");
+    if (now) now.textContent = "v" + ((info && info.current) || META.version || "?");
+    const note = $("#setUpdateNote");
+    const doBtn = $("#setDoUpdate");
+    const relBtn = $("#setOpenRelease");
+    if (!note || !doBtn || !relBtn) return;
+
+    if (!info || !info.ok) {
+      note.textContent = (info && info.error) || "还没检查过";
+      doBtn.hidden = true;
+      relBtn.hidden = true;
+      setUpdateBar(0, false);
+      setUpdatePill(null);
+      return;
+    }
+    if (!info.hasUpdate) {
+      note.textContent = "已是最新版本（v" + info.current + "）";
+      doBtn.hidden = true;
+      relBtn.hidden = true;
+      updatePhase = "idle";
+      setUpdateBar(0, false);
+      setUpdatePill(null);
+      return;
+    }
+    note.textContent = "发现新版本 v" + info.latest +
+      (info.canAutoInstall ? "，可以直接在应用里更新" : "，需要手动下载替换");
+    doBtn.hidden = !info.canAutoInstall;
+    doBtn.textContent = "下载并安装";
+    relBtn.hidden = !!info.canAutoInstall;
+    updatePhase = "available";
+    setUpdateBar(0, false);
+    setUpdatePill(info);
+  }
+
+  async function checkUpdate(force, quiet) {
+    const btn = $("#setCheckUpdate");
+    if (btn && !quiet) {
+      btn.disabled = true;
+      btn.textContent = "检查中…";
+    }
+    try {
+      const r = await fetch("/api/update/check" + (force ? "?force=1" : ""));
+      updateInfo = await r.json();
+    } catch (e) {
+      updateInfo = { ok: false, error: "连不上更新服务", current: META.version };
+    } finally {
+      if (btn && !quiet) {
+        btn.disabled = false;
+        btn.textContent = "检查更新";
+      }
+    }
+    renderUpdate(updateInfo);
+    return updateInfo;
+  }
+
+  function applyUpdateState(st) {
+    if (!st) return;
+    const note = $("#setUpdateNote");
+    const doBtn = $("#setDoUpdate");
+    const relBtn = $("#setOpenRelease");
+    updatePhase = st.phase || "idle";
+    if (st.phase === "downloading") {
+      setUpdateBar(st.pct || 0, true);
+      if (note) note.textContent = st.msg || "下载中…";
+      if (doBtn) doBtn.hidden = true;
+    } else if (st.phase === "ready") {
+      setUpdateBar(100, true);
+      if (note) note.textContent = "v" + (st.version || "") + " 已下载，点右边安装，应用会自动重启";
+      if (doBtn) {
+        doBtn.hidden = false;
+        doBtn.textContent = "立即安装并重启";
+      }
+      if (relBtn) relBtn.hidden = true;
+    } else if (st.phase === "manual") {
+      setUpdateBar(0, false);
+      if (note) note.textContent = "绿色版需要手动替换：下载后解压覆盖原文件夹即可";
+      if (doBtn) doBtn.hidden = true;
+      if (relBtn) relBtn.hidden = false;
+    } else if (st.phase === "error") {
+      setUpdateBar(0, false);
+      if (note) note.textContent = st.error || "更新失败";
+      if (doBtn) doBtn.hidden = true;
+    }
+  }
+
+  async function pollUpdate() {
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(async () => {
+      let st = null;
+      try {
+        st = await (await fetch("/api/update/state")).json();
+      } catch (e) {
+        return;
+      }
+      applyUpdateState(st);
+      if (st && st.phase === "downloading") pollUpdate();
+    }, 650);
+  }
+
+  async function startUpdate() {
+    const doBtn = $("#setDoUpdate");
+    if (updatePhase === "ready") {
+      if (doBtn) {
+        doBtn.disabled = true;
+        doBtn.textContent = "正在退出并安装…";
+      }
+      try {
+        await fetch("/api/update/install", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+        });
+      } catch (e) { /* 应用马上就会退出，请求断了也正常 */ }
+      return;
+    }
+    if (doBtn) { doBtn.disabled = true; doBtn.textContent = "准备下载…"; }
+    try {
+      await fetch("/api/update/download", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+      });
+    } catch (e) { /* 忽略，交给状态轮询 */ }
+    if (doBtn) doBtn.disabled = false;
+    pollUpdate();
+  }
+
+  function openReleasePage() {
+    const url = (updateInfo && updateInfo.url) || "https://github.com/Enkrid-Rao/diary/releases/latest";
+    fetch("/api/open-url", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url }),
+    }).catch(() => {});
+  }
+
+  function scheduleAutoUpdate(on) {
+    clearTimeout(autoKickoff);
+    clearInterval(autoTimer);
+    if (!on) return;
+    autoKickoff = setTimeout(() => checkUpdate(false, true), 3000);
+    autoTimer = setInterval(() => checkUpdate(false, true), 6 * 3600 * 1000);
+  }
+
+  $("#updatePill").addEventListener("click", () => {
+    tab = "general";
+    openSettings();
+    if (updateInfo) renderUpdate(updateInfo);
+  });
+  $("#setCheckUpdate").addEventListener("click", () => checkUpdate(true, false));
+  $("#setDoUpdate").addEventListener("click", startUpdate);
+  $("#setOpenRelease").addEventListener("click", openReleasePage);
+
   function applySettings(s, opts) {
     if (!s) return;
     const r = document.documentElement;
@@ -1360,6 +1839,12 @@
     wrap.style.lineHeight = String(s.editor.lineHeight);
 
     applyRatio(s.appearance.splitRatio);
+    applyLiveMode(!!s.editor.live);
+    const autoOn = !!s.general.autoUpdate;
+    if (autoOn !== lastAuto) {
+      lastAuto = autoOn;
+      scheduleAutoUpdate(autoOn);
+    }
     buildKeymap(s);
     const sb = $("#searchBtn");
     if (sb) sb.title = "搜索日记" + (s.shortcuts.search ? " (" + s.shortcuts.search + ")" : "");
@@ -1392,8 +1877,11 @@
     today: () => loadDate(fmt(new Date())),
     toggleSide: () => toggleSidebar(),
     settings: () => openSettings(),
+    lineBelow: (c) => insertLineBelow(c),
+    selectLine: (c) => selectCurrentLine(c),
   };
-  const EDITOR_ACTIONS = ["bold", "italic", "code", "strike", "link", "h1", "h2", "h3"];
+  const EDITOR_ACTIONS = ["bold", "italic", "code", "strike", "link", "h1", "h2", "h3",
+                          "lineBelow", "selectLine"];
 
   const SC_LABELS = [
     ["save", "保存"],
@@ -1406,6 +1894,8 @@
     ["h1", "一级标题"],
     ["h2", "二级标题"],
     ["h3", "三级标题"],
+    ["lineBelow", "在下方插入空行"],
+    ["selectLine", "选中当前行"],
     ["prevDay", "前一天"],
     ["nextDay", "后一天"],
     ["today", "回到今天"],
@@ -1659,6 +2149,9 @@
     $("#setSplit").value = Math.round(d.appearance.splitRatio * 100);
     $("#setSplitVal").textContent = Math.round(d.appearance.splitRatio * 100) + " %";
     setSw("#setSyncScroll", d.appearance.syncScroll !== false);
+    setSw("#setLive", !!d.editor.live);
+    setSw("#setAutoUpdate", !!d.general.autoUpdate);
+    renderUpdate(updateInfo);
     setSeg("#setTabSize", d.editor.tabSize);
     setSw("#setAutoPairs", d.editor.autoPairs);
     setSw("#setContinueList", d.editor.continueList);
@@ -1863,6 +2356,19 @@
       const y = editorToPreview(editorScroller.scrollTop);
       if (y !== null) setPaneScroll(previewPane, y);
     }
+  });
+
+  $("#setAutoUpdate").addEventListener("click", () => {
+    draft.general.autoUpdate = !draft.general.autoUpdate;
+    setSw("#setAutoUpdate", draft.general.autoUpdate);
+    touch();
+    if (draft.general.autoUpdate) checkUpdate(true, true);
+  });
+
+  $("#setLive").addEventListener("click", () => {
+    draft.editor.live = !draft.editor.live;
+    setSw("#setLive", draft.editor.live);
+    touch();
   });
 
   $("#setAutoPairs").addEventListener("click", () => {

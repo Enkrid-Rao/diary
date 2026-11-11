@@ -77,7 +77,11 @@ It is a single-file Python server plus a vanilla-JS front end. No build step, no
 - 100% local: the server binds `127.0.0.1` only, entries are plain text you can `grep`, `git`, or
   sync with anything
 - Editable keyboard shortcuts, configurable diary directory, window geometry remembered
-- No network calls at runtime; CodeMirror and KaTeX are vendored in `static/vendor`
+- No network calls at runtime, **unless** you turn on update checks; CodeMirror and KaTeX are
+  vendored in `static/vendor`
+- Optional auto-update (off by default): once enabled it asks GitHub for the latest release at
+  startup and every 6 hours, downloads the installer, checks that the file is a real 20 MB
+  executable, then hands it to the installer — nothing about your diary leaves the machine
 
 ## Screenshots
 
@@ -163,6 +167,9 @@ python app.py
 
 On first launch from source the app creates `diaries/` and `settings.json` next to `app.py`. Point the
 diary folder somewhere else from **Settings → General** if you prefer.
+
+> Running the installed build and the source build side by side? The server picks 17823 by default;
+> start the second one on another port: `DIARY_PORT=17824 python app.py`.
 
 > **Building the packages yourself:** `python build_release.py` produces the portable folder and zip
 > (PyInstaller), `installer.iss` compiles the installer with Inno Setup 6, and `Diary.py` stays as the

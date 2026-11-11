@@ -70,7 +70,10 @@
 **归你所有**
 - 全本地：服务只监听 `127.0.0.1`，日记是纯文本，`grep`、`git`、任意同步工具都能用
 - 快捷键可自定义、日记目录可改、窗口位置会记住
-- 运行时不联网；CodeMirror 与 KaTeX 已内置在 `static/vendor`
+- 默认不联网；只有打开「自动检查更新」才会访问 GitHub，其余情况一个请求都不发。
+  CodeMirror 与 KaTeX 已内置在 `static/vendor`
+- 自动更新默认关闭：打开后启动时与每 6 小时查一次 GitHub Release，下载安装包并校验
+  （体积 + MZ 头），交给安装器时也不会上传任何日记内容
 
 ## 截图
 
@@ -156,6 +159,9 @@ python app.py
 
 首次启动会在 `app.py` 同级创建 `diaries/` 与 `settings.json`。想把日记放别处，去
 **设置 → 常规 → 日记目录** 改。
+
+> 想和已安装的版本同时开着？默认端口是 17823，第二个实例换个端口即可：
+> `DIARY_PORT=17824 python app.py`。
 
 > **自己打包：** `python build_release.py` 用 PyInstaller 出绿色版目录与 zip；`installer.iss` 用
 > Inno Setup 6 编译安装包；`Diary.py` 仍是最薄的启动器，用来在可编辑的源码上跑一个 exe。

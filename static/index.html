@@ -58,6 +58,9 @@
 
       <div class="spacer"></div>
 
+      <button id="updatePill" class="update-pill" hidden title="有新版本">
+        <span class="update-pill-dot"></span><span id="updatePillText">有新版本</span>
+      </button>
       <span id="wordCount" class="meta"></span>
       <span class="meta-sep"></span>
       <span id="saveState" class="meta save-state"><span class="dot"></span><span id="saveText">已保存</span></span>
@@ -217,6 +220,33 @@
               <div class="set-ctl">
                 <button class="sw" id="setRememberWin" role="switch" aria-checked="true"></button>
               </div>
+            </div>
+          </section>
+
+          <section class="set-card">
+            <h3 class="set-card-title">更新</h3>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">自动检查更新</span>
+                <span class="set-hint-line">打开后，启动时和每 6 小时向 GitHub 查一次新版本；关掉就完全不联网</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setAutoUpdate" role="switch" aria-checked="false"></button>
+              </div>
+            </div>
+
+            <div class="set-row is-stack">
+              <div class="set-lab">
+                <span class="set-name">当前版本 <span id="setVersionNow" class="set-val-inline">—</span></span>
+                <span class="set-hint-line" id="setUpdateNote">还没检查过</span>
+              </div>
+              <div class="set-ctl set-ctl-inline">
+                <button class="pill-btn" id="setCheckUpdate">检查更新</button>
+                <button class="pill-btn is-accent" id="setDoUpdate" hidden>下载并安装</button>
+                <button class="pill-btn" id="setOpenRelease" hidden>打开下载页</button>
+              </div>
+              <div class="set-progress" id="setUpdateBar" hidden><i></i></div>
             </div>
           </section>
 
@@ -445,6 +475,20 @@
               </div>
               <div class="set-ctl">
                 <input id="setFontEdCustom" class="txt-input" type="text" placeholder="例如 JetBrains Mono, 霞鹜文楷" maxlength="200" spellcheck="false">
+              </div>
+            </div>
+          </section>
+
+          <section class="set-card">
+            <h3 class="set-card-title">编辑模式</h3>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">边写边渲染</span>
+                <span class="set-hint-line">单栏显示，标题、强调与公式直接按最终样式渲染；光标所在行仍保留源码，方便改。关闭则回到左右分栏</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setLive" role="switch" aria-checked="false"></button>
               </div>
             </div>
           </section>

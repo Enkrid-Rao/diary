@@ -352,6 +352,26 @@
 
             <div class="set-row">
               <div class="set-lab">
+                <span class="set-name">背景模糊</span>
+                <span class="set-hint-line">侧栏与工作区背后的毛玻璃。关掉能省一点 GPU，观感差别很小</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setGlassBlur" role="switch" aria-checked="true"></button>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
+                <span class="set-name">光晕漂移</span>
+                <span class="set-hint-line">让环境光晕缓慢转动。全屏图层每帧重绘，实测会明显抬高 GPU 占用，默认关闭</span>
+              </div>
+              <div class="set-ctl">
+                <button class="sw" id="setAuroraDrift" role="switch" aria-checked="false"></button>
+              </div>
+            </div>
+
+            <div class="set-row">
+              <div class="set-lab">
                 <span class="set-name">胶片颗粒</span>
                 <span class="set-hint-line">极淡的噪点，用来压住大面积渐变的塑料感</span>
               </div>

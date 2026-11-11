@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
 
 _T0 = time.perf_counter()
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.1"
 
 if getattr(sys, "frozen", False):
     # PyInstaller windowed 模式下 OS 层 stdout/stderr 句柄无效，
@@ -151,6 +151,8 @@ DEFAULT_SETTINGS = {
         "topbar": "flat",            # flat | glass
         "blur": 30,
         "aurora": True,
+        "auroraDrift": False,        # 极光缓慢漂移：全屏逐帧重绘，默认关闭
+        "glassBlur": True,           # 侧栏/工作区毛玻璃：约多 3% GPU，默认保留
         "grain": True,
         "motion": True,              # 界面动效与过渡
         "sidebarWidth": 258,
@@ -264,6 +266,8 @@ def sanitize(raw):
         s["appearance"]["topbar"] = _choice(a.get("topbar"), _TOPBARS, "flat")
         s["appearance"]["blur"] = _int(a.get("blur"), 0, 44, 30)
         s["appearance"]["aurora"] = _bool(a.get("aurora"), True)
+        s["appearance"]["auroraDrift"] = _bool(a.get("auroraDrift"), False)
+        s["appearance"]["glassBlur"] = _bool(a.get("glassBlur"), True)
         s["appearance"]["grain"] = _bool(a.get("grain"), True)
         s["appearance"]["motion"] = _bool(a.get("motion"), True)
         s["appearance"]["sidebarWidth"] = _int(a.get("sidebarWidth"), 200, 380, 258)

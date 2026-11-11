@@ -76,6 +76,33 @@
     return !document.body.classList.contains("no-motion");
   }
 
+  /* 静止或被切到后台时，把常驻动画按暂停——极光漂移开着也不会一直烧 GPU。
+     有输入就恢复，恢复点接着原来的进度，不会跳。 */
+  (function () {
+    const IDLE_MS = 30000;
+    let timer = 0;
+    let paused = false;
+    function setPaused(on) {
+      if (on === paused) return;
+      paused = on;
+      document.body.classList.toggle("motion-paused", on);
+    }
+    function wake() {
+      setPaused(false);
+      clearTimeout(timer);
+      timer = setTimeout(function () { setPaused(true); }, IDLE_MS);
+    }
+    ["pointermove", "pointerdown", "keydown", "wheel", "input", "touchstart"].forEach(function (ev) {
+      window.addEventListener(ev, wake, { passive: true });
+    });
+    window.addEventListener("blur", function () { setPaused(true); });
+    window.addEventListener("focus", wake);
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) setPaused(true); else wake();
+    });
+    wake();
+  })();
+
   /* 统一入场：只换 keyframes 名与参数，不往元素上堆内联 transition。
      name: aFade | aFadeUp | aFadeDown | aFadeLeft | aFadeRight | aPop | aNudgeY */
   function runAnim(el, name, opt) {
@@ -1824,6 +1851,8 @@
     r.style.setProperty("--editor-fs", s.editor.fontSize + "px");
     r.style.setProperty("--editor-lh", String(s.editor.lineHeight));
     document.body.classList.toggle("no-aurora", !s.appearance.aurora);
+    document.body.classList.toggle("aurora-drift", !!s.appearance.auroraDrift);
+    document.body.classList.toggle("glass-blur", !!s.appearance.glassBlur);
     document.body.classList.toggle("no-grain", !s.appearance.grain);
     document.body.classList.toggle("no-motion", s.appearance.motion === false);
     document.body.classList.toggle("topbar-glass", s.appearance.topbar === "glass");
@@ -2129,6 +2158,8 @@
     $("#setBlur").value = d.appearance.blur;
     $("#setBlurVal").textContent = d.appearance.blur + " px";
     setSw("#setAurora", d.appearance.aurora);
+    setSw("#setAuroraDrift", !!d.appearance.auroraDrift);
+    setSw("#setGlassBlur", !!d.appearance.glassBlur);
     setSw("#setGrain", d.appearance.grain);
     setSw("#setMotion", d.appearance.motion !== false);
     $("#setSideW").value = d.appearance.sidebarWidth;
@@ -2290,6 +2321,18 @@
   $("#setAurora").addEventListener("click", () => {
     draft.appearance.aurora = !draft.appearance.aurora;
     setSw("#setAurora", draft.appearance.aurora);
+    touch();
+  });
+
+  $("#setGlassBlur").addEventListener("click", () => {
+    draft.appearance.glassBlur = !draft.appearance.glassBlur;
+    setSw("#setGlassBlur", !!draft.appearance.glassBlur);
+    touch();
+  });
+
+  $("#setAuroraDrift").addEventListener("click", () => {
+    draft.appearance.auroraDrift = !draft.appearance.auroraDrift;
+    setSw("#setAuroraDrift", !!draft.appearance.auroraDrift);
     touch();
   });
 

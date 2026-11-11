@@ -253,6 +253,10 @@ body::before {
     radial-gradient(38% 42% at 22% 28%, rgba(var(--accent-rgb), var(--glow-a)), transparent 65%),
     radial-gradient(34% 40% at 78% 22%, rgba(var(--hue-b), var(--glow-b)), transparent 65%),
     radial-gradient(40% 44% at 62% 80%, rgba(var(--hue-c), var(--glow-c)), transparent 65%);
+}
+/* 漂移是可选效果：全屏图层每帧重绘，实测能从 2.5% 拉到 25% GPU，
+   所以默认不动，需要时在 设置 → 外观 里打开。 */
+body.aurora-drift::before {
   animation: aurora 52s ease-in-out infinite alternate;
   will-change: transform;
 }
@@ -262,7 +266,8 @@ body::before {
   66%  { transform: rotate(-2.6deg) scale(0.97) translate(-1.5%, 1.5%); }
   100% { transform: rotate(1.8deg) scale(1.03); }
 }
-body.no-aurora::before { animation: none; transform: none; opacity: 0.85; }
+body.no-aurora::before { opacity: 0.85; }
+body.no-aurora.aurora-drift::before { animation: none; }
 
 /* 胶片颗粒：160×160 的 SVG 噪点平铺，一次栅格化，无运行时开销 */
 body::after {
@@ -281,10 +286,17 @@ body.no-grain::after { display: none; }
    ========================================================================== */
 .glass, #sidebar, #workspace {
   background: var(--glass);
-  backdrop-filter: blur(var(--blur)) saturate(1.4);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
   border: 1px solid var(--line-1);
   box-shadow: var(--sh-2), var(--hairline);
+  /* 默认不模糊：这两块背后只有极光渐变，实测模糊前后只有 0.005% 的像素
+     差超过 8 级，却要让合成器整屏重采样（38% → 25% GPU）。想要那点通透感
+     就打开 设置 → 外观 → 背景模糊。 */
+}
+
+body.glass-blur #sidebar,
+body.glass-blur #workspace {
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4);
 }
 
 /* ============ 5. 布局 ============ */
@@ -1781,6 +1793,10 @@ body.no-motion *, body.no-motion *::before, body.no-motion *::after {
   scroll-behavior: auto !important;
 }
 body.no-motion #app { animation: none !important; }
+/* 静止 / 失焦时暂停所有常驻动画（见 app.js 里的 IDLE_MS） */
+body.motion-paused *,
+body.motion-paused *::before,
+body.motion-paused *::after { animation-play-state: paused !important; }
 body.no-motion::before { animation: none !important; }
 
 @media (max-width: 1020px) {
